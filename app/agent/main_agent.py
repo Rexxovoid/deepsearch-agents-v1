@@ -24,6 +24,7 @@ from app.api.context import (
     set_thread_context,
 )
 from app.api.monitor import monitor
+from app.tools.db_tools import begin_sql_retry_scope, end_sql_retry_scope
 
 # 文件类工具由主智能体直接掌握，负责读取上传附件和生成最终交付文档
 from app.tools.markdown_tools import generate_markdown
@@ -88,6 +89,7 @@ async def run_deep_agent(task_query, session_id):
     # ContextVar 让深层工具无需显式传参，也能拿到当前会话目录和 WebSocket thread_id
     session_dir_token = set_session_context(session_dir_str)
     session_id_token = set_thread_context(session_id)
+    sql_retry_token = begin_sql_retry_scope()
 
     # 前端拿到工作目录后，可以展示本次任务生成的 Markdown/PDF 等产物
     monitor.report_session_dir(session_dir_str)
@@ -150,6 +152,7 @@ async def run_deep_agent(task_query, session_id):
         monitor._emit("error", f"执行主智能发生异常信息：{str(e)}")
     finally:
         # 任务结束后恢复 ContextVar，避免后续请求复用到本次会话目录或 thread_id
+        end_sql_retry_scope(sql_retry_token)
         reset_session_context(session_dir_token, session_id_token)
 
 

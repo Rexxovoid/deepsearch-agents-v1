@@ -4,6 +4,19 @@
 
 ## 2026-10-19
 
+### SQL 安全与超时重试
+
+- 新增默认表名白名单 `drugs,inventory,sales_records`，列表和预览仅访问允许的基础表；SQLGlot 校验所有 SELECT、CTE、JOIN、子查询和 UNION 中的真实表引用。
+- 拒绝写操作、多语句、跨库查询、视图、文件导出、锁、用户变量、注释及非批准函数；执行重建的只读 SQL。
+- 增加只读事务、查询与网络超时、结果行数限制；仅超时及临时故障自动重试，最多 3 次，同一研搜任务共享预算，耗尽后停止 SQL 访问。
+- 新增 `MYSQL_ALLOWED_TABLES`、`MYSQL_QUERY_TIMEOUT_SECONDS`、`MYSQL_MAX_ROWS` 示例配置，更新 SQLGlot 和 MySQL 驱动依赖。
+
+主要文件：`app/tools/sql_safety.py`、`app/tools/db_tools.py`、`app/agent/main_agent.py`、`app/prompt/prompts.yml`、`tests/test_sql_safety.py`，及依赖/示例配置文件。
+
+验证：32 项后端测试（含新增 15 项 SQL 测试）、前端历史恢复测试、依赖锁文件和差异检查通过；真实 MySQL 白名单列举与只读 SELECT 成功，1 秒时限触发错误码 3024。本次未变更数据库账号权限，未提交或推送到 GitHub。
+
+配置说明：[SQL 安全](../sql-security.md)；开发日志：[问题与解决过程](2026-10-19-sql-security.md)。
+
 ### GitHub 上传准备与项目来源说明
 
 - 根据用户终端日志定位 `dubious ownership` 为沙箱账号与 Administrator 的所有权差异，在上传教程补充仅信任此项目目录的处理步骤；等待用户执行验证。

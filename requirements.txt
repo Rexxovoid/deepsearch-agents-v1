@@ -17,7 +17,8 @@ uvicorn[standard]>=0.20.0   # 服务器引擎 (含 WebSocket)
 python-multipart>=0.0.6     # 文件上传支持
 
 # --- 数据库与存储 (Database) ---
-mysql-connector-python>=8.0.0  # MySQL 官方驱动，用于 mysql_tools
+mysql-connector-python>=9.2.0  # 支持连接及读写超时
+sqlglot>=27,<31               # MySQL SQL AST 校验与表引用解析
 
 # --- 文件处理 (File Processing - upload_file_read_tool) ---
 python-docx>=1.0.0          # Word (.docx) 读取
