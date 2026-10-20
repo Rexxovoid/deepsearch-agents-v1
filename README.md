@@ -251,13 +251,18 @@ uv run python -c "from app.tools.db_tools import list_sql_tables; print(list_sql
 - [事件持久化](docs/event-persistence.md)：刷新、重连与历史恢复。
 - [任务队列](docs/task-queue.md)：并发、重试、超时、取消与故障恢复。
 - [SQL 安全](docs/sql-security.md)：白名单、只读校验与查询限制。
-- [评测体系](docs/evaluation.md)：12 项初始任务、四类指标、在线配置与报告。
+- [评测体系](docs/evaluation.md)：32 项任务、快速与分类任务集、四类指标、在线配置与报告。
 
 ## 运行评测
 
 ```powershell
-uv run python -m evaluations.run --mode offline
-uv run python -m evaluations.run --mode live --category sql
+uv run python -m evaluations.run --mode offline 离线
+uv run python -m evaluations.run --mode live 一次查询四类，离线+在线
+uv run python -m evaluations.run --mode live --category sql 评测数据库
+uv run python -m evaluations.run --mode live --category search 评测查询
+uv run python -m evaluations.run --mode live --category file 评测文件生成
+修改后，用基线比较结果
+uv run python -m evaluations.run --mode live --category sql --baseline evaluations/reports/修改前目录/report.json
 ```
 
 离线模式的搜索、SQL、知识库使用固定样本，仅验证评分流程；文件真实生成。在线模式调用实际服务，SQL 包含模型生成查询；运行前配置相关服务，知识库评测还需导入专用基准资料。报告默认保存在已忽略的 `evaluations/reports/`。详见 [评测说明](docs/evaluation.md)。

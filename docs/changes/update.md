@@ -4,6 +4,15 @@
 
 ## 2026-10-20
 
+### 扩充评测任务集
+
+- 默认任务从 12 项扩充至 32 项，搜索、SQL、知识库、文件各 8 项；新增快速检查集和四份分类任务集，支持现有 `--tasks` 参数独立运行。
+- 补充知识库基准资料，以及 SQL 关联/分组/空结果、中文与长文档文件生成等场景；同步 README 和评测说明。
+- 涉及文件：`evaluations/tasks.json`、`evaluations/suites/`、`evaluations/knowledge.md`、`tests/test_evaluations.py`、`README.md`、`docs/evaluation.md`。
+- 验证：32 项离线任务通过，8 个文件任务真实生成 Markdown，其中 5 项进一步生成并解析 PDF；11 项评测回归通过，参考 SQL 校验及任务集一致性通过。
+- 限制：未执行真实服务在线质量评测；RAG 需重新导入基准资料，默认集变化需重建基线。
+- 开发日志：[任务集扩充与验证](2026-10-20-evaluation.md)。
+
 ### 四类任务评测体系
 
 - 新增搜索、SQL、知识库回答、文件生成共 12 项起始任务，以及离线/在线 CLI、单项硬超时、JSON/Markdown 报告与兼容基线对比。

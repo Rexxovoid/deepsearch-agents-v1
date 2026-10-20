@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "file-markdown",
+      "category": "file",
+      "format": "md",
+      "content": "# Evaluation Report\n\n## Summary\nEvaluation complete.\n",
+      "required_text": [
+        "Evaluation Report",
+        "Summary"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Evaluation Report\n\n## Summary\nEvaluation complete.\n",
+      "required_text": [
+        "Evaluation Report",
+        "Evaluation complete"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-table-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Sales Report\n\n| Region | Amount |\n| --- | --- |\n| East | 120 |\n\nTotal 120.\n",
+      "required_text": [
+        "Sales Report",
+        "120"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-chinese-md",
+      "category": "file",
+      "format": "md",
+      "content": "# 研搜报告\n\n## 核心结论\n销售记录已完成整理。\n",
+      "required_text": [
+        "研搜报告",
+        "销售记录已完成整理"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-chinese-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# 研搜报告\n\n## 核心结论\n销售记录已完成整理。\n",
+      "required_text": [
+        "研搜报告",
+        "销售记录"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-list-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Action Plan\n\n- Verify data\n- Review findings\n- Export report\n",
+      "required_text": [
+        "Action Plan",
+        "Verify data",
+        "Export report"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-code-md",
+      "category": "file",
+      "format": "md",
+      "content": "# SQL Example\n\n```sql\nSELECT sale_id FROM sales_records LIMIT 40;\n```\n",
+      "required_text": [
+        "```sql",
+        "LIMIT 40"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-long-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Long Report\n\n## Section 1\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 2\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 3\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 4\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 5\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 6\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 7\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 8\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 9\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 10\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 11\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 12\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 13\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 14\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 15\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 16\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 17\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 18\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 19\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 20\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 21\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 22\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 23\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 24\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 25\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 26\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 27\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 28\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 29\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 30\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 31\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 32\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 33\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 34\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 35\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 36\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 37\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 38\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 39\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 40\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\nEND OF REPORT\n",
+      "required_text": [
+        "Long Report",
+        "Section 40",
+        "END OF REPORT"
+      ],
+      "threshold": 1
+    }
+  ]
+}

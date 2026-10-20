@@ -2,7 +2,30 @@
 
 ## 范围
 
-评测代码位于 `evaluations/`，独立于用户会话和任务队列，不需要启动前后端。初始任务集为 `evaluations/tasks.json`，包含四类各 3 项，共 12 项；适合作为后续扩充的基准集，不代表全面质量结论。
+评测代码位于 `evaluations/`，独立于用户会话和任务队列，不需要启动前后端。默认任务集为 `evaluations/tasks.json`，包含四类各 8 项，共 32 项；适合作为后续扩充的基准集，不代表全面质量结论。
+
+## 选择任务集
+
+`--tasks` 选择任务集，`--category` 可在该任务集中进一步筛选；每条命令均可独立执行，无需先运行离线模式。
+
+| 文件 | 数量 | 用途 |
+| --- | --- | --- |
+| `evaluations/tasks.json` | 32 | 默认全量任务 |
+| `evaluations/suites/smoke.json` | 12 | 保留最初的题目，快速检查基本链路 |
+| `evaluations/suites/search.json` | 8 | 官方文档定位，包含 pathlib、MySQL、FastAPI、JSON、CSV、unittest、SQLite、日志 |
+| `evaluations/suites/sql.json` | 8 | 前 40 行、计数、区域汇总、库存排序、中文筛选、关联、HAVING、空结果 |
+| `evaluations/suites/rag.json` | 8 | 重试、恢复、未知价格、存储、刷新、归属、SQL 策略、并发与超时 |
+| `evaluations/suites/file.json` | 8 | Markdown、PDF、表格、中文、列表、代码块及长文档 |
+
+```powershell
+uv run python -m evaluations.run --mode offline --tasks evaluations/suites/smoke.json
+uv run python -m evaluations.run --mode live --tasks evaluations/suites/search.json
+uv run python -m evaluations.run --mode live --tasks evaluations/suites/sql.json
+uv run python -m evaluations.run --mode live --tasks evaluations/suites/rag.json
+uv run python -m evaluations.run --mode offline --tasks evaluations/suites/file.json
+```
+
+知识库任务扩充后，需将更新的 `evaluations/knowledge.md` 重新导入专用知识库并完成解析。默认任务集已变化，旧全量报告不能直接作为新基线；先运行新任务集建立新基线。各独立任务集与默认集同步维护，回归测试检查内容一致。
 
 | 类别 | 在线被测链路 | 指标与通过条件 |
 | --- | --- | --- |
@@ -33,7 +56,7 @@ uv run python -m evaluations.run --mode offline
 uv run python -m evaluations.run --mode live --category search
 ```
 
-默认使用官方文档页作为相关结果标注。URL 比较去除跟踪参数、锚点和尾斜杠，仍匹配具体页面；重复 URL 只计一次相关命中。Precision@K 的分母固定为 K，返回不足 K 项不会自动补满得分。结果变化或官方文档 URL 调整后，应人工复核标注。
+默认使用官方文档页作为相关结果标注。新增 Python 页面已核对官方 [JSON](https://docs.python.org/3/library/json.html)、[CSV](https://docs.python.org/3/library/csv.html)、[unittest](https://docs.python.org/3/library/unittest.html)、[sqlite3](https://docs.python.org/3/library/sqlite3.html) 和 [logging](https://docs.python.org/3/library/logging.html) 文档地址。URL 比较去除跟踪参数、锚点和尾斜杠，仍匹配具体页面；重复 URL 只计一次相关命中。Precision@K 的分母固定为 K，返回不足 K 项不会自动补满得分。结果变化或官方文档 URL 调整后，应人工复核标注。
 
 ### 数据库
 

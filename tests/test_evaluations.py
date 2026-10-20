@@ -8,9 +8,30 @@ from pathlib import Path
 
 from evaluations.run import compare_baseline, load_tasks, observe, run_case, summarize, write_reports
 from evaluations.scoring import rag_score, search_score, sql_score
+from evaluations.scoring import score
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_published_suites_and_reference_queries_are_consistent(self):
+        from app.tools.sql_safety import SQLPolicy, validate_sql
+        root = Path(__file__).resolve().parents[1] / 'evaluations'
+        tasks = load_tasks(root / 'tasks.json')
+        indexed = {task['id']: task for task in tasks}
+        policy = SQLPolicy('deepsearch_db', frozenset({'drugs', 'inventory', 'sales_records'}))
+        # 防止分类任务集与默认集的题目/答案漂移，并检查参考 SQL 仍满足安全策略。
+        for category in ('search', 'sql', 'rag', 'file'):
+            suite = load_tasks(root / 'suites' / f'{category}.json')
+            self.assertEqual(suite, [task for task in tasks if task['category'] == category])
+        for task in load_tasks(root / 'suites/smoke.json'):
+            self.assertEqual(task, indexed[task['id']])
+        for task in tasks:
+            with self.subTest(task=task['id']):
+                if task['category'] == 'sql':
+                    validate_sql(task['reference_sql'], policy)
+                if task['category'] != 'file':
+                    value, _ = score(task, task['fixture'])
+                    self.assertGreaterEqual(value, task['threshold'])
+
     def test_live_sql_calls_model_without_reference_then_executes_both(self):
         tool = MagicMock()
         tool.invoke.side_effect = ['total\n50', 'total\n50']

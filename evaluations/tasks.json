@@ -1,17 +1,525 @@
 {
   "version": 1,
   "tasks": [
-    {"id":"search-python","category":"search","question":"Python 官方文档中如何使用 pathlib 处理路径？","relevant_urls":["https://docs.python.org/3/library/pathlib.html"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://docs.python.org/3/library/pathlib.html"}]}},
-    {"id":"search-mysql","category":"search","question":"查找 MySQL 8.4 官方 SELECT 语法文档","relevant_urls":["https://dev.mysql.com/doc/refman/8.4/en/select.html"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://dev.mysql.com/doc/refman/8.4/en/select.html"}]}},
-    {"id":"search-fastapi","category":"search","question":"查找 FastAPI 官方 WebSocket 使用文档","relevant_urls":["https://fastapi.tiangolo.com/advanced/websockets/"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://fastapi.tiangolo.com/advanced/websockets/"}]}},
-    {"id":"sql-sales-40","category":"sql","question":"按 sale_id 升序查询销售表前40条完整记录","reference_sql":"SELECT * FROM sales_records ORDER BY sale_id LIMIT 40","ordered":true,"threshold":1,"fixture":{"candidate":"sale_id,total_amount\n1,20.00\n2,30.00","reference":"sale_id,total_amount\n1,20.00\n2,30.00"}},
-    {"id":"sql-count","category":"sql","question":"统计药品表的药品总数，列名为 total","reference_sql":"SELECT COUNT(*) AS total FROM drugs","ordered":true,"threshold":1,"fixture":{"candidate":"total\n50","reference":"total\n50"}},
-    {"id":"sql-region","category":"sql","question":"按销售区域统计销售金额合计，列名为 region 和 amount，按区域升序排列","reference_sql":"SELECT region, SUM(total_amount) AS amount FROM sales_records GROUP BY region ORDER BY region","ordered":true,"threshold":1,"fixture":{"candidate":"region,amount\n华东,20.00\n华北,30.00","reference":"region,amount\n华东,20.00\n华北,30.00"}},
-    {"id":"rag-retry","category":"rag","question":"根据评测基准资料，任务失败后最多自动重试几次？总共最多执行几次？","required_facts":[["3次","3 次","三次"],["4次","4 次","四次"]],"forbidden_phrases":["无限重试"],"threshold":1,"fixture":{"answer":"失败后最多自动重试3次，包含首次执行共4次。"}},
-    {"id":"rag-restore","category":"rag","question":"根据评测基准资料，worker失联后的恢复是否从Agent中间步骤继续？","required_facts":[["重新执行整项任务","从任务开头重新执行"],["不支持中间步骤恢复","不是断点续跑"]],"forbidden_phrases":["支持从中断步骤继续"],"threshold":1,"fixture":{"answer":"会重新执行整项任务，不是断点续跑。"}},
-    {"id":"rag-unknown","category":"rag","question":"根据评测基准资料，项目的年度服务价格是多少？若资料没有说明，请明确说明。","required_facts":[["未提供","未说明","无法确定","没有说明"]],"forbidden_phrases":["999元","免费使用一年"],"threshold":1,"fixture":{"answer":"资料未提供年度服务价格，无法确定。"}},
-    {"id":"file-markdown","category":"file","format":"md","content":"# Evaluation Report\n\n## Summary\nEvaluation complete.\n","required_text":["Evaluation Report","Summary"],"threshold":1},
-    {"id":"file-pdf","category":"file","format":"pdf","content":"# Evaluation Report\n\n## Summary\nEvaluation complete.\n","required_text":["Evaluation Report","Evaluation complete"],"threshold":1},
-    {"id":"file-table-pdf","category":"file","format":"pdf","content":"# Sales Report\n\n| Region | Amount |\n| --- | --- |\n| East | 120 |\n\nTotal 120.\n","required_text":["Sales Report","120"],"threshold":1}
+    {
+      "id": "search-python",
+      "category": "search",
+      "question": "Python 官方文档中如何使用 pathlib 处理路径？",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/pathlib.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://docs.python.org/3/library/pathlib.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-mysql",
+      "category": "search",
+      "question": "查找 MySQL 8.4 官方 SELECT 语法文档",
+      "relevant_urls": [
+        "https://dev.mysql.com/doc/refman/8.4/en/select.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://dev.mysql.com/doc/refman/8.4/en/select.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-fastapi",
+      "category": "search",
+      "question": "查找 FastAPI 官方 WebSocket 使用文档",
+      "relevant_urls": [
+        "https://fastapi.tiangolo.com/advanced/websockets/"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://fastapi.tiangolo.com/advanced/websockets/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-json",
+      "category": "search",
+      "question": "查找 Python 官方文档中 JSON 序列化和反序列化的使用说明",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/json.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/json.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-csv",
+      "category": "search",
+      "question": "查找 Python 官方文档中 CSV 文件读取和写入的说明",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/csv.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/csv.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-unittest",
+      "category": "search",
+      "question": "查找 Python 官方 unittest 单元测试和 assertRaises 的文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/unittest.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/unittest.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-sqlite3",
+      "category": "search",
+      "question": "查找 Python 官方 sqlite3 参数绑定和数据库连接文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/sqlite3.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/sqlite3.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-logging",
+      "category": "search",
+      "question": "查找 Python 官方 logging 日志记录模块文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/logging.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/logging.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sql-sales-40",
+      "category": "sql",
+      "question": "按 sale_id 升序查询销售表前40条完整记录",
+      "reference_sql": "SELECT * FROM sales_records ORDER BY sale_id LIMIT 40",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "sale_id,total_amount\n1,20.00\n2,30.00",
+        "reference": "sale_id,total_amount\n1,20.00\n2,30.00"
+      }
+    },
+    {
+      "id": "sql-count",
+      "category": "sql",
+      "question": "统计药品表的药品总数，列名为 total",
+      "reference_sql": "SELECT COUNT(*) AS total FROM drugs",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "total\n50",
+        "reference": "total\n50"
+      }
+    },
+    {
+      "id": "sql-region",
+      "category": "sql",
+      "question": "按销售区域统计销售金额合计，列名为 region 和 amount，按区域升序排列",
+      "reference_sql": "SELECT region, SUM(total_amount) AS amount FROM sales_records GROUP BY region ORDER BY region",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "region,amount\n华东,20.00\n华北,30.00",
+        "reference": "region,amount\n华东,20.00\n华北,30.00"
+      }
+    },
+    {
+      "id": "sql-inventory-top",
+      "category": "sql",
+      "question": "查询库存量最大的前5条库存，返回 inventory_id、drug_id、quantity_on_hand，按 quantity_on_hand 降序，再按 inventory_id 升序",
+      "reference_sql": "SELECT inventory_id, drug_id, quantity_on_hand FROM inventory ORDER BY quantity_on_hand DESC, inventory_id ASC LIMIT 5",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "inventory_id,drug_id,quantity_on_hand\n1,1,500\n2,2,400",
+        "reference": "inventory_id,drug_id,quantity_on_hand\n1,1,500\n2,2,400"
+      }
+    },
+    {
+      "id": "sql-drug-filter",
+      "category": "sql",
+      "question": "查询治疗领域 therapeutic_area 为心血管的药品，返回 drug_id、generic_name，按 drug_id 升序",
+      "reference_sql": "SELECT drug_id, generic_name FROM drugs WHERE therapeutic_area = '心血管' ORDER BY drug_id",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "drug_id,generic_name\n4,阿托伐他汀钙片\n9,阿司匹林肠溶片",
+        "reference": "drug_id,generic_name\n4,阿托伐他汀钙片\n9,阿司匹林肠溶片"
+      }
+    },
+    {
+      "id": "sql-sales-join",
+      "category": "sql",
+      "question": "按 sale_id 升序返回前10条销售的 sale_id、generic_name、quantity_sold，需要关联药品表",
+      "reference_sql": "SELECT s.sale_id, d.generic_name, s.quantity_sold FROM sales_records AS s JOIN drugs AS d ON s.drug_id = d.drug_id ORDER BY s.sale_id LIMIT 10",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "sale_id,generic_name,quantity_sold\n1,阿莫西林胶囊,20\n2,布洛芬缓释胶囊,30",
+        "reference": "sale_id,generic_name,quantity_sold\n1,阿莫西林胶囊,20\n2,布洛芬缓释胶囊,30"
+      }
+    },
+    {
+      "id": "sql-sales-having",
+      "category": "sql",
+      "question": "统计每种药品的销售数量合计，仅保留合计大于100的药品，返回 drug_id、total_quantity，按 drug_id 升序",
+      "reference_sql": "SELECT drug_id, SUM(quantity_sold) AS total_quantity FROM sales_records GROUP BY drug_id HAVING SUM(quantity_sold) > 100 ORDER BY drug_id",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "drug_id,total_quantity\n1,150\n2,200",
+        "reference": "drug_id,total_quantity\n1,150\n2,200"
+      }
+    },
+    {
+      "id": "sql-empty-result",
+      "category": "sql",
+      "question": "查询 sale_id 小于0的销售，返回 sale_id、drug_id，按 sale_id 升序；没有数据时返回空结果",
+      "reference_sql": "SELECT sale_id, drug_id FROM sales_records WHERE sale_id < 0 ORDER BY sale_id",
+      "ordered": true,
+      "threshold": 1,
+      "fixture": {
+        "candidate": "sale_id,drug_id",
+        "reference": "sale_id,drug_id"
+      }
+    },
+    {
+      "id": "rag-retry",
+      "category": "rag",
+      "question": "根据评测基准资料，任务失败后最多自动重试几次？总共最多执行几次？",
+      "required_facts": [
+        [
+          "3次",
+          "3 次",
+          "三次"
+        ],
+        [
+          "4次",
+          "4 次",
+          "四次"
+        ]
+      ],
+      "forbidden_phrases": [
+        "无限重试"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "失败后最多自动重试3次，包含首次执行共4次。"
+      }
+    },
+    {
+      "id": "rag-restore",
+      "category": "rag",
+      "question": "根据评测基准资料，worker失联后的恢复是否从Agent中间步骤继续？",
+      "required_facts": [
+        [
+          "重新执行整项任务",
+          "从任务开头重新执行"
+        ],
+        [
+          "不支持中间步骤恢复",
+          "不是断点续跑"
+        ]
+      ],
+      "forbidden_phrases": [
+        "支持从中断步骤继续"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "会重新执行整项任务，不是断点续跑。"
+      }
+    },
+    {
+      "id": "rag-unknown",
+      "category": "rag",
+      "question": "根据评测基准资料，项目的年度服务价格是多少？若资料没有说明，请明确说明。",
+      "required_facts": [
+        [
+          "未提供",
+          "未说明",
+          "无法确定",
+          "没有说明"
+        ]
+      ],
+      "forbidden_phrases": [
+        "999元",
+        "免费使用一年"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "资料未提供年度服务价格，无法确定。"
+      }
+    },
+    {
+      "id": "rag-storage",
+      "category": "rag",
+      "question": "根据评测基准资料，账号数据和任务事件分别保存在哪两份SQLite文件？",
+      "required_facts": [
+        [
+          "accounts.sqlite3"
+        ],
+        [
+          "events.sqlite3"
+        ]
+      ],
+      "forbidden_phrases": [
+        "只保存于浏览器"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "账号数据保存在 accounts.sqlite3，任务事件保存在 events.sqlite3。"
+      }
+    },
+    {
+      "id": "rag-refresh",
+      "category": "rag",
+      "question": "根据评测基准资料，刷新浏览器会取消后台任务吗？历史怎样找回？",
+      "required_facts": [
+        [
+          "不会取消后台任务",
+          "不会主动取消"
+        ],
+        [
+          "持久化事件",
+          "已保存事件"
+        ]
+      ],
+      "forbidden_phrases": [
+        "刷新必定取消任务"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "刷新不会取消后台任务，页面根据持久化事件重新加载历史。"
+      }
+    },
+    {
+      "id": "rag-ownership",
+      "category": "rag",
+      "question": "根据评测基准资料，仅知道别人的thread_id能否访问其会话？后端检查什么？",
+      "required_facts": [
+        [
+          "不能访问",
+          "无权访问"
+        ],
+        [
+          "登录身份"
+        ],
+        [
+          "会话归属",
+          "所有者"
+        ]
+      ],
+      "forbidden_phrases": [
+        "知道编号即可访问"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "不能访问；后端检查登录身份和会话归属。"
+      }
+    },
+    {
+      "id": "rag-sql-policy",
+      "category": "rag",
+      "question": "根据评测基准资料，SQL工具允许什么查询？是否允许写入和访问白名单外的表？",
+      "required_facts": [
+        [
+          "只读SELECT",
+          "只读查询"
+        ],
+        [
+          "表名白名单",
+          "白名单表"
+        ],
+        [
+          "禁止写入",
+          "不允许写入"
+        ]
+      ],
+      "forbidden_phrases": [
+        "允许任意写入"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "只允许表名白名单内的只读SELECT，禁止写入。"
+      }
+    },
+    {
+      "id": "rag-concurrency-timeout",
+      "category": "rag",
+      "question": "根据评测基准资料，队列默认并发数和每次尝试的超时是多少？",
+      "required_facts": [
+        [
+          "并发2",
+          "并发数为2",
+          "并发数是2"
+        ],
+        [
+          "600秒",
+          "10分钟"
+        ]
+      ],
+      "forbidden_phrases": [
+        "默认无限并发"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "队列默认并发2，每次尝试超时600秒。"
+      }
+    },
+    {
+      "id": "file-markdown",
+      "category": "file",
+      "format": "md",
+      "content": "# Evaluation Report\n\n## Summary\nEvaluation complete.\n",
+      "required_text": [
+        "Evaluation Report",
+        "Summary"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Evaluation Report\n\n## Summary\nEvaluation complete.\n",
+      "required_text": [
+        "Evaluation Report",
+        "Evaluation complete"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-table-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Sales Report\n\n| Region | Amount |\n| --- | --- |\n| East | 120 |\n\nTotal 120.\n",
+      "required_text": [
+        "Sales Report",
+        "120"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-chinese-md",
+      "category": "file",
+      "format": "md",
+      "content": "# 研搜报告\n\n## 核心结论\n销售记录已完成整理。\n",
+      "required_text": [
+        "研搜报告",
+        "销售记录已完成整理"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-chinese-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# 研搜报告\n\n## 核心结论\n销售记录已完成整理。\n",
+      "required_text": [
+        "研搜报告",
+        "销售记录"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-list-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Action Plan\n\n- Verify data\n- Review findings\n- Export report\n",
+      "required_text": [
+        "Action Plan",
+        "Verify data",
+        "Export report"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-code-md",
+      "category": "file",
+      "format": "md",
+      "content": "# SQL Example\n\n```sql\nSELECT sale_id FROM sales_records LIMIT 40;\n```\n",
+      "required_text": [
+        "```sql",
+        "LIMIT 40"
+      ],
+      "threshold": 1
+    },
+    {
+      "id": "file-long-pdf",
+      "category": "file",
+      "format": "pdf",
+      "content": "# Long Report\n\n## Section 1\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 2\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 3\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 4\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 5\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 6\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 7\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 8\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 9\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 10\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 11\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 12\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 13\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 14\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 15\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 16\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 17\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 18\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 19\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 20\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 21\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 22\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 23\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 24\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 25\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 26\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 27\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 28\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 29\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 30\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 31\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 32\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 33\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 34\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 35\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 36\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 37\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 38\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 39\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\n## Section 40\nThis section reviews sales records and inventory evidence. Findings remain reproducible.\n\nEND OF REPORT\n",
+      "required_text": [
+        "Long Report",
+        "Section 40",
+        "END OF REPORT"
+      ],
+      "threshold": 1
+    }
   ]
 }

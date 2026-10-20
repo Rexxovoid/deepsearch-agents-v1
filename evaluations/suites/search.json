@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "search-python",
+      "category": "search",
+      "question": "Python 官方文档中如何使用 pathlib 处理路径？",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/pathlib.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://docs.python.org/3/library/pathlib.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-mysql",
+      "category": "search",
+      "question": "查找 MySQL 8.4 官方 SELECT 语法文档",
+      "relevant_urls": [
+        "https://dev.mysql.com/doc/refman/8.4/en/select.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://dev.mysql.com/doc/refman/8.4/en/select.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-fastapi",
+      "category": "search",
+      "question": "查找 FastAPI 官方 WebSocket 使用文档",
+      "relevant_urls": [
+        "https://fastapi.tiangolo.com/advanced/websockets/"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://fastapi.tiangolo.com/advanced/websockets/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-json",
+      "category": "search",
+      "question": "查找 Python 官方文档中 JSON 序列化和反序列化的使用说明",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/json.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/json.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-csv",
+      "category": "search",
+      "question": "查找 Python 官方文档中 CSV 文件读取和写入的说明",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/csv.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/csv.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-unittest",
+      "category": "search",
+      "question": "查找 Python 官方 unittest 单元测试和 assertRaises 的文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/unittest.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/unittest.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-sqlite3",
+      "category": "search",
+      "question": "查找 Python 官方 sqlite3 参数绑定和数据库连接文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/sqlite3.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/sqlite3.html"
+          }
+        ]
+      }
+    },
+    {
+      "id": "search-logging",
+      "category": "search",
+      "question": "查找 Python 官方 logging 日志记录模块文档",
+      "relevant_urls": [
+        "https://docs.python.org/3/library/logging.html"
+      ],
+      "k": 5,
+      "threshold": 0.6,
+      "fixture": {
+        "results": [
+          {
+            "url": "https://example.com/unrelated"
+          },
+          {
+            "url": "https://docs.python.org/3/library/logging.html"
+          }
+        ]
+      }
+    }
+  ]
+}

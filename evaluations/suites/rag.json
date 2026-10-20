@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "rag-retry",
+      "category": "rag",
+      "question": "根据评测基准资料，任务失败后最多自动重试几次？总共最多执行几次？",
+      "required_facts": [
+        [
+          "3次",
+          "3 次",
+          "三次"
+        ],
+        [
+          "4次",
+          "4 次",
+          "四次"
+        ]
+      ],
+      "forbidden_phrases": [
+        "无限重试"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "失败后最多自动重试3次，包含首次执行共4次。"
+      }
+    },
+    {
+      "id": "rag-restore",
+      "category": "rag",
+      "question": "根据评测基准资料，worker失联后的恢复是否从Agent中间步骤继续？",
+      "required_facts": [
+        [
+          "重新执行整项任务",
+          "从任务开头重新执行"
+        ],
+        [
+          "不支持中间步骤恢复",
+          "不是断点续跑"
+        ]
+      ],
+      "forbidden_phrases": [
+        "支持从中断步骤继续"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "会重新执行整项任务，不是断点续跑。"
+      }
+    },
+    {
+      "id": "rag-unknown",
+      "category": "rag",
+      "question": "根据评测基准资料，项目的年度服务价格是多少？若资料没有说明，请明确说明。",
+      "required_facts": [
+        [
+          "未提供",
+          "未说明",
+          "无法确定",
+          "没有说明"
+        ]
+      ],
+      "forbidden_phrases": [
+        "999元",
+        "免费使用一年"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "资料未提供年度服务价格，无法确定。"
+      }
+    },
+    {
+      "id": "rag-storage",
+      "category": "rag",
+      "question": "根据评测基准资料，账号数据和任务事件分别保存在哪两份SQLite文件？",
+      "required_facts": [
+        [
+          "accounts.sqlite3"
+        ],
+        [
+          "events.sqlite3"
+        ]
+      ],
+      "forbidden_phrases": [
+        "只保存于浏览器"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "账号数据保存在 accounts.sqlite3，任务事件保存在 events.sqlite3。"
+      }
+    },
+    {
+      "id": "rag-refresh",
+      "category": "rag",
+      "question": "根据评测基准资料，刷新浏览器会取消后台任务吗？历史怎样找回？",
+      "required_facts": [
+        [
+          "不会取消后台任务",
+          "不会主动取消"
+        ],
+        [
+          "持久化事件",
+          "已保存事件"
+        ]
+      ],
+      "forbidden_phrases": [
+        "刷新必定取消任务"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "刷新不会取消后台任务，页面根据持久化事件重新加载历史。"
+      }
+    },
+    {
+      "id": "rag-ownership",
+      "category": "rag",
+      "question": "根据评测基准资料，仅知道别人的thread_id能否访问其会话？后端检查什么？",
+      "required_facts": [
+        [
+          "不能访问",
+          "无权访问"
+        ],
+        [
+          "登录身份"
+        ],
+        [
+          "会话归属",
+          "所有者"
+        ]
+      ],
+      "forbidden_phrases": [
+        "知道编号即可访问"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "不能访问；后端检查登录身份和会话归属。"
+      }
+    },
+    {
+      "id": "rag-sql-policy",
+      "category": "rag",
+      "question": "根据评测基准资料，SQL工具允许什么查询？是否允许写入和访问白名单外的表？",
+      "required_facts": [
+        [
+          "只读SELECT",
+          "只读查询"
+        ],
+        [
+          "表名白名单",
+          "白名单表"
+        ],
+        [
+          "禁止写入",
+          "不允许写入"
+        ]
+      ],
+      "forbidden_phrases": [
+        "允许任意写入"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "只允许表名白名单内的只读SELECT，禁止写入。"
+      }
+    },
+    {
+      "id": "rag-concurrency-timeout",
+      "category": "rag",
+      "question": "根据评测基准资料，队列默认并发数和每次尝试的超时是多少？",
+      "required_facts": [
+        [
+          "并发2",
+          "并发数为2",
+          "并发数是2"
+        ],
+        [
+          "600秒",
+          "10分钟"
+        ]
+      ],
+      "forbidden_phrases": [
+        "默认无限并发"
+      ],
+      "threshold": 1,
+      "fixture": {
+        "answer": "队列默认并发2，每次尝试超时600秒。"
+      }
+    }
+  ]
+}
