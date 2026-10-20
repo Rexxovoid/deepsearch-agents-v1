@@ -21,6 +21,7 @@
 | 后台队列 | SQLite 持久化排队，独立 worker 执行；支持并发控制、重试、超时、取消和故障恢复 |
 | SQL 安全 | 表名白名单、只读 SELECT 校验、结果行数上限、超时和有限重试 |
 | RAGFlow 接入 | 助手发现、临时会话问答、配置校验、超时和业务错误处理 |
+| 评测体系 | 搜索、SQL、知识库和文件四类任务集；离线/在线评测、报告与基线对比 |
 
 刷新浏览器不会主动取消后台任务。刷新恢复依赖已保存的任务和事件；worker 失联后按租约及重试预算重新执行任务，**不是恢复 Agent 中间步骤**。
 
@@ -91,6 +92,7 @@ deepsearch-agents-v1/
 │   ├── task-queue.md              # 队列配置、恢复边界与验收
 │   └── sql-security.md            # SQL 安全策略
 ├── tests/                         # 后端、历史恢复与滚动行为测试
+├── evaluations/                   # 基准任务、评分器、评测入口与知识库基准资料
 ├── examples/                      # 原项目示例
 ├── .env.example                   # 配置模板，不含真实密钥
 ├── AGENTS.md                      # 项目协作与文档维护约定
@@ -249,3 +251,13 @@ uv run python -c "from app.tools.db_tools import list_sql_tables; print(list_sql
 - [事件持久化](docs/event-persistence.md)：刷新、重连与历史恢复。
 - [任务队列](docs/task-queue.md)：并发、重试、超时、取消与故障恢复。
 - [SQL 安全](docs/sql-security.md)：白名单、只读校验与查询限制。
+- [评测体系](docs/evaluation.md)：12 项初始任务、四类指标、在线配置与报告。
+
+## 运行评测
+
+```powershell
+uv run python -m evaluations.run --mode offline
+uv run python -m evaluations.run --mode live --category sql
+```
+
+离线模式的搜索、SQL、知识库使用固定样本，仅验证评分流程；文件真实生成。在线模式调用实际服务，SQL 包含模型生成查询；运行前配置相关服务，知识库评测还需导入专用基准资料。报告默认保存在已忽略的 `evaluations/reports/`。详见 [评测说明](docs/evaluation.md)。

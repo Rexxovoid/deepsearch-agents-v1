@@ -37,6 +37,7 @@ env/
 /agent_workspace/
 /output/
 /updated/
+/evaluations/reports/
 # Personal knowledge-base material: keep locally, do not publish.
 /docs/knowledge_base/
 *.sqlite

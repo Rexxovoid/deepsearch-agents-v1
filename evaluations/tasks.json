@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "tasks": [
+    {"id":"search-python","category":"search","question":"Python 官方文档中如何使用 pathlib 处理路径？","relevant_urls":["https://docs.python.org/3/library/pathlib.html"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://docs.python.org/3/library/pathlib.html"}]}},
+    {"id":"search-mysql","category":"search","question":"查找 MySQL 8.4 官方 SELECT 语法文档","relevant_urls":["https://dev.mysql.com/doc/refman/8.4/en/select.html"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://dev.mysql.com/doc/refman/8.4/en/select.html"}]}},
+    {"id":"search-fastapi","category":"search","question":"查找 FastAPI 官方 WebSocket 使用文档","relevant_urls":["https://fastapi.tiangolo.com/advanced/websockets/"],"k":5,"threshold":0.6,"fixture":{"results":[{"url":"https://fastapi.tiangolo.com/advanced/websockets/"}]}},
+    {"id":"sql-sales-40","category":"sql","question":"按 sale_id 升序查询销售表前40条完整记录","reference_sql":"SELECT * FROM sales_records ORDER BY sale_id LIMIT 40","ordered":true,"threshold":1,"fixture":{"candidate":"sale_id,total_amount\n1,20.00\n2,30.00","reference":"sale_id,total_amount\n1,20.00\n2,30.00"}},
+    {"id":"sql-count","category":"sql","question":"统计药品表的药品总数，列名为 total","reference_sql":"SELECT COUNT(*) AS total FROM drugs","ordered":true,"threshold":1,"fixture":{"candidate":"total\n50","reference":"total\n50"}},
+    {"id":"sql-region","category":"sql","question":"按销售区域统计销售金额合计，列名为 region 和 amount，按区域升序排列","reference_sql":"SELECT region, SUM(total_amount) AS amount FROM sales_records GROUP BY region ORDER BY region","ordered":true,"threshold":1,"fixture":{"candidate":"region,amount\n华东,20.00\n华北,30.00","reference":"region,amount\n华东,20.00\n华北,30.00"}},
+    {"id":"rag-retry","category":"rag","question":"根据评测基准资料，任务失败后最多自动重试几次？总共最多执行几次？","required_facts":[["3次","3 次","三次"],["4次","4 次","四次"]],"forbidden_phrases":["无限重试"],"threshold":1,"fixture":{"answer":"失败后最多自动重试3次，包含首次执行共4次。"}},
+    {"id":"rag-restore","category":"rag","question":"根据评测基准资料，worker失联后的恢复是否从Agent中间步骤继续？","required_facts":[["重新执行整项任务","从任务开头重新执行"],["不支持中间步骤恢复","不是断点续跑"]],"forbidden_phrases":["支持从中断步骤继续"],"threshold":1,"fixture":{"answer":"会重新执行整项任务，不是断点续跑。"}},
+    {"id":"rag-unknown","category":"rag","question":"根据评测基准资料，项目的年度服务价格是多少？若资料没有说明，请明确说明。","required_facts":[["未提供","未说明","无法确定","没有说明"]],"forbidden_phrases":["999元","免费使用一年"],"threshold":1,"fixture":{"answer":"资料未提供年度服务价格，无法确定。"}},
+    {"id":"file-markdown","category":"file","format":"md","content":"# Evaluation Report\n\n## Summary\nEvaluation complete.\n","required_text":["Evaluation Report","Summary"],"threshold":1},
+    {"id":"file-pdf","category":"file","format":"pdf","content":"# Evaluation Report\n\n## Summary\nEvaluation complete.\n","required_text":["Evaluation Report","Evaluation complete"],"threshold":1},
+    {"id":"file-table-pdf","category":"file","format":"pdf","content":"# Sales Report\n\n| Region | Amount |\n| --- | --- |\n| East | 120 |\n\nTotal 120.\n","required_text":["Sales Report","120"],"threshold":1}
+  ]
+}
