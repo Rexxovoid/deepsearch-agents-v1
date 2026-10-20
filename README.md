@@ -1,362 +1,251 @@
-<div align='center'>
-  <h1 style="margin-top: 15px;">「深度研搜」对话式多智能体研究系统</h1>
-  <h4><b>deepsearch-agents-v1</b></h4>
-  <p><em>基于原项目扩展的多智能体研究系统，增加任务事件持久化、历史会话管理和账号权限隔离。</em></p>
-</div>
+﻿# 深度研搜 · deepsearch-agents-v1
 
-<div align='center'>
+基于 DeepAgents 的对话式多智能体研究系统，支持网络搜索、MySQL 只读查询、RAGFlow 知识库问答、附件读取和 Markdown/PDF 报告生成，并提供账号隔离、历史会话、事件持久化及后台任务队列。
 
-![AI](https://img.shields.io/badge/AI-Agent-00c853?style=flat)
-![DeepAgents](https://img.shields.io/badge/DeepAgents-0.5.7-1C3C3C.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-WebSocket-009688.svg?logo=fastapi&logoColor=white)
-[![Read Online](https://img.shields.io/badge/在线教程-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%B7%B1%E5%BA%A6%E7%A0%94%E6%90%9C/0-%E5%89%8D%E8%A8%80)
+## 项目来源
 
-</div>
+本项目基于 [didilili/deepsearch-agents](https://github.com/didilili/deepsearch-agents) 二次开发，原作者为 [didilili](https://github.com/didilili)。原项目提供多智能体调度、工具接入及前后端通信等基础能力，感谢原作者的工作。
 
-## 项目来源与扩展说明
+原作者提供配套学习文档与章节示例，适合学习 DeepAgents 和多智能体应用开发，详见原仓库及 [ai-agents-from-zero](https://github.com/didilili/ai-agents-from-zero)。本 README 说明扩展版本当前的功能、结构和运行方式；本仓库不是原作者官方版本。
 
-本项目基于 **[didilili/deepsearch-agents](https://github.com/didilili/deepsearch-agents)** 进行二次开发，原作者为 **[didilili](https://github.com/didilili)**。原项目提供了多智能体调度、网络搜索、数据库查询、RAGFlow 知识库、文件处理和前后端通信等基础能力，感谢原作者的代码与教程。
+## 当前功能
 
-本仓库在原项目基础上主要增加或完善：
+| 功能 | 当前行为 |
+| --- | --- |
+| 多智能体研搜 | 主智能体规划与汇总，网络搜索、数据库、RAGFlow 三个助手按需检索 |
+| 文件处理 | 读取上传的 PDF、Word、Excel、Markdown 和文本，生成 Markdown/PDF 文件 |
+| 账号与访问控制 | 账号密码注册、登录和退出；校验会话、任务、WebSocket、上传及生成文件的归属 |
+| 历史会话 | 左侧展示会话列表，以用户第一个问题命名；切换和刷新后恢复历史 |
+| 实时进度 | WebSocket 推送执行事件，断线后重连并回放持久化事件 |
+| 历史阅读 | 向上阅读时保持位置，支持回到最新消息 |
+| 后台队列 | SQLite 持久化排队，独立 worker 执行；支持并发控制、重试、超时、取消和故障恢复 |
+| SQL 安全 | 表名白名单、只读 SELECT 校验、结果行数上限、超时和有限重试 |
+| RAGFlow 接入 | 助手发现、临时会话问答、配置校验、超时和业务错误处理 |
 
-- **事件持久化与刷新恢复**：SQLite 保存任务事件，刷新或断线后恢复历史并继续查看后台任务。
-- **持久化任务队列**：独立 worker 进程处理排队、并发、失败重试、硬超时和崩溃恢复，详见 [队列说明](docs/task-queue.md)。
-- **历史会话管理**：左侧会话列表、新建与切换会话，以首个问题命名。
-- **账号和权限隔离**：注册、登录、退出，以及任务、WebSocket、上传附件和生成文件的所有权校验。
-- **RAGFlow 调用完善**：接口兼容、配置校验、超时、业务错误处理和临时会话清理。
-- **SQL 查询安全**：表名白名单、只读校验、超时中断和最多 3 次重试，详见 [配置说明](docs/sql-security.md)。
-- **回归测试与开发记录**：[更新记录](docs/changes/update.md) 和按日期编写的问题排查日志。
+刷新浏览器不会主动取消后台任务。刷新恢复依赖已保存的任务和事件；worker 失联后按租约及重试预算重新执行任务，**不是恢复 Agent 中间步骤**。
 
-本仓库为扩展版本，非原作者官方仓库。下文保留的原项目架构介绍、教程及相关素材链接，其来源为上述原项目；教程和章节分支请以原仓库为准。
-
-当前版本支持刷新恢复和持久化队列：排队任务重启后仍保留，失去 worker 的任务在租约过期后按重试预算重新执行。恢复会从任务开头执行，不是恢复 Agent 中间步骤。
-
-如果你正在找一个适合学习 `DeepAgents`、`WebSocket`、`Tavily`、`RAGFlow` 和 AI Agent 工程开发的实战项目，「深度研搜」很可能是最适合你的项目。
-
-它不是只调用一次大模型接口，也不是套一个搜索 API 做问答演示。这个项目围绕深度研究场景，用 DeepAgents 组织主智能体和专家子智能体，让系统可以根据任务需要查公开网络、查结构化数据库、查 RAGFlow 私有知识库、读取用户上传附件，并把最终结果整理成回答、Markdown 或 PDF。换句话说，你学到的不是某一个框架 API，而是一条 AI 应用从多智能体规划、工具接入、上下文隔离、接口交付到前端联调的完整项目主线。
-
-> 本套仓库是 [ai-agents-from-zero](https://github.com/didilili/ai-agents-from-zero) 教程体系中的 [实战项目-深度研搜](https://github.com/didilili/ai-agents-from-zero/tree/main/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%B7%B1%E5%BA%A6%E7%A0%94%E6%90%9C) 配套源码仓库，除了可直接运行和二次开发的项目代码之外，也提供了与教程章节对应的 Git 分支演进过程，以及完整的在线图文讲义入口。
-> 如果你想系统学习「AI 智能体 大模型应用开发」，也可直接从系统教程 [AI 智能体实战速成指南-大模型入门](https://didilili.github.io/ai-agents-from-zero/#/) 开始。
-
-
-## 📖 项目介绍
-
-在真实研究场景里，用户的问题经常不是一句普通问答可以解决的。
-
-比如：
+## 执行流程与技术栈
 
 ```text
-结合公开资料、数据库信息和我上传的文档，整理一份机器人行业研究报告，并生成 PDF。
+浏览器（React / Vite / Ant Design）
+  → FastAPI：登录与归属校验、上传文件、提交任务
+  → SQLite：保存任务队列和会话事件
+  → 独立 worker：领取任务，为每次尝试启动执行进程
+  → 主智能体（DeepAgents / LangGraph / LangChain）
+      ├─ 网络搜索助手 → Tavily
+      ├─ 数据库助手 → MySQL + SQLGlot 只读校验
+      ├─ 知识库助手 → RAGFlow
+      └─ 文件工具 → 附件读取、Markdown/PDF 生成
+  → 持久化事件 → FastAPI / WebSocket → 浏览器进度、结果和文件
 ```
 
-这个任务背后可能包含多类动作：
+模型通过 OpenAI 兼容接口接入。文件处理使用 pypdf、python-docx、pandas 和 ReportLab。账号与队列使用本地 SQLite，业务查询数据存放于 MySQL，两者用途不同。
 
-- 判断需要公开资料、内部数据、私有知识库还是本次上传文件；
-- 去互联网搜索最新新闻、政策、产品或行业资料；
-- 到 MySQL 查询企业结构化业务数据；
-- 到 RAGFlow 查询内部非结构化文档；
-- 读取用户上传的 PDF、Word、Excel、Markdown 或文本文件；
-- 汇总多来源信息，判断资料是否足够；
-- 生成 Markdown 报告，并在需要时转换成 PDF；
-- 把执行过程、最终结果和生成文件实时展示给前端。
+## 项目结构
 
-所以「深度研搜」更像一个会分工、会查资料、会生成交付物的研究助手。用户只需要提出任务，系统会在后端组织一条可观察的多智能体执行链路。
+以下列出主要模块；运行时数据目录不提交 Git。
 
 ```text
-用户任务
-  -> FastAPI 接口接收请求
-  -> run_deep_agent 创建会话目录并写入上下文
-  -> 主智能体分析任务
-  -> 分派给网络搜索助手 / 数据库查询助手 / RAGFlow 助手
-  -> 主智能体汇总多来源信息
-  -> 调用文件工具生成 Markdown / PDF
-  -> monitor 通过 WebSocket 推送进度
-  -> 前端展示事件、答案和文件列表
-```
-
-## ✨ 项目亮点
-
-- **一主三从的多智能体架构**
-  - 主智能体负责理解任务、规划步骤、调度助手和最终汇总。
-  - 网络搜索助手、数据库查询助手、RAGFlow 助手分别处理不同信息来源。
-- **多来源检索，而不是模型裸答**
-  - `Tavily` 负责互联网公开资料检索。
-  - `MySQL` 负责查询结构化业务数据。
-  - `RAGFlow` 负责查询内部非结构化文档。
-  - 上传附件由主智能体通过文件工具读取。
-- **从检索到交付的完整可运行链路**
-  - 不停留在 Prompt 设计，而是会真实调用工具、读取数据、生成 Markdown，并在需要时转换成 PDF。
-- **长任务执行过程可观察**
-  - 工具调用、子智能体调用、工作目录创建、任务结果、取消和异常都会通过 `monitor` 推送到前端。
-- **会话级上下文隔离**
-  - 通过 `thread_id` 和 `session_dir` 区分不同任务，`ContextVar` 让深层工具也能拿到当前会话身份和文件目录。
-- **工程化前后端结构清晰**
-  - 基于 `FastAPI + WebSocket + DeepAgents + React` 组织任务接口、异步执行、事件推送、文件上传和文件下载。
-- **不仅有实战代码，还有完整配套教程文档**
-  - 项目配有一套系统化、完全免费的教程讲义，适合按章节从 DeepAgents 基础、子智能体、Backend、中间件一直学到完整项目闭环。
-- **兼顾学习价值与可扩展性**
-  - 既可以按教程章节逐步理解，也可以在此基础上继续扩展权限控制、任务队列、事件持久化、评测体系等能力。
-
-这套课程十分适合这些场景：
-
-- 想系统学习 `DeepAgents`，但不想只停留在几个玩具示例。
-- 想把 `Tavily`、`MySQL`、`RAGFlow` 和大模型放到同一个研究助手场景里理解。
-- 想做一个比简单模型调用更接近真实开发的 AI Agent 项目。
-- 想把项目写进简历，并且能说清楚智能体层、工具层、服务层、文件层和前端层分别做了什么。
-
-## 🏗️ 系统架构
-
-![深度研搜系统架构图：前端、FastAPI、DeepAgents、子智能体、工具和文件产物之间的关系](docs/images/deepsearch-system-architecture.svg)
-
-项目采用 DeepAgents 中典型的 Orchestrator-Workers 模式：主智能体作为调度中心，三个专家助手负责信息获取，文件工具由主智能体直接掌握。
-
-项目围绕两条主线展开：
-
-| 主线             | 做什么                                                       | 涉及模块                                                                  |
-| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| 多智能体深度研搜 | 基于用户任务完成规划、分派、检索、读取附件、汇总和生成交付物 | `DeepAgents` / `LangChain` / `LangGraph` / `Tavily` / `MySQL` / `RAGFlow` |
-| 前后端实时闭环   | 启动后台任务、上传文件、推送执行过程、展示结果和下载生成文件 | `FastAPI` / `WebSocket` / `React` / `Vite`                                |
-
-### 智能体与工具
-
-| 归属           | 能力                                     | 工具                                                          |
-| -------------- | ---------------------------------------- | ------------------------------------------------------------- |
-| 主智能体       | 任务规划、助手调度、结果汇总、文件交付   | `read_file_content`、`generate_markdown`、`convert_md_to_pdf` |
-| 网络搜索助手   | 查询互联网公开信息、新闻、政策和网页资料 | `internet_search`                                             |
-| 数据库查询助手 | 发现表名、预览表结构和样例数据、执行 SQL | `list_sql_tables`、`get_table_data`、`execute_sql_query`      |
-| RAGFlow 助手   | 发现可用知识库助手，并向内部知识库提问   | `get_assistant_list`、`create_ask_delete`                     |
-
-
-## 🛠️ 项目技术栈
-
-| 模块           | 技术                                             | 作用                                                                          |
-| -------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| 智能体框架     | `DeepAgents`                                     | 创建主智能体和子智能体，承接长任务、多工具、多助手调度                        |
-| 图与检查点     | `LangGraph`                                      | 提供底层运行时和 `InMemorySaver` 会话检查点                                   |
-| 模型与工具抽象 | `LangChain` / `langchain-core`                   | 封装 OpenAI 兼容模型、工具声明和 Agent 调用结构                               |
-| 大模型接入     | OpenAI 兼容接口                                  | 通过 `.env` 中的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`LLM_QWEN_MAX` 接入模型 |
-| 网络搜索       | `Tavily`                                         | 为网络搜索助手提供公开资料检索                                                |
-| 结构化数据     | `MySQL` / `mysql-connector-python`               | 为数据库助手提供药品、库存、销售等教学业务数据                                |
-| 私有知识库     | `RAGFlow` / `ragflow-sdk`                        | 为知识库助手提供内部文档问答能力                                              |
-| 文件处理       | `pypdf` / `python-docx` / `pandas` / `ReportLab` | 读取上传附件，生成 Markdown，转换 PDF                                         |
-| 后端接口       | `FastAPI` / `Uvicorn`                            | 提供任务、取消、上传、文件列表、下载和 WebSocket 接口                         |
-| 实时通信       | `WebSocket`                                      | 推送工具调用、助手调用、最终结果和错误事件                                    |
-| 前端           | `React` / `Vite` / `Ant Design` / `Tailwind CSS` | 提供对话式研搜界面、事件流、附件上传和文件下载                                |
-| 依赖管理       | `uv` / `pnpm`                                    | 管理 Python 后端和前端依赖                                                    |
-
-## 📁 项目结构
-
-```text
-deepsearch-agents/
+deepsearch-agents-v1/
 ├── app/
 │   ├── agent/
-│   │   ├── subagents/              # 网络搜索、数据库查询、RAGFlow 三个子智能体
-│   │   ├── llm.py                  # OpenAI 兼容模型初始化
-│   │   ├── main_agent.py           # 主智能体组装与 run_deep_agent 执行入口
-│   │   └── prompts.py              # 读取 app/prompt/prompts.yml
+│   │   ├── subagents/             # 网络、数据库、RAGFlow 助手
+│   │   ├── llm.py                 # 模型初始化
+│   │   └── main_agent.py          # 主智能体与任务执行入口
 │   ├── api/
-│   │   ├── context.py              # ContextVar 保存 thread_id 和 session_dir
-│   │   ├── monitor.py              # 工具调用、助手调用、结果和异常事件推送
-│   │   └── server.py               # FastAPI 任务、上传、文件、下载、WebSocket 接口
-│   ├── prompt/
-│   │   └── prompts.yml             # 主智能体和子智能体提示词配置
-│   ├── ragflow/                    # RAGFlow 配置和基础调用示例
-│   ├── tools/                      # Tavily、MySQL、RAGFlow、文件读取、Markdown、PDF 工具
-│   ├── utils/                      # 路径解析、Markdown/PDF 底层转换等普通 Python 工具
-│   ├── output/                     # 运行时生成：每个会话的 Markdown、PDF 等产物
-│   └── updated/                    # 运行时生成：用户上传文件的会话暂存目录
+│   │   ├── server.py              # HTTP / WebSocket、队列集成
+│   │   ├── auth.py                # 账号、密码哈希和登录会话
+│   │   ├── ownership.py           # 会话归属与访问校验
+│   │   ├── event_store.py         # SQLite 事件持久化
+│   │   ├── monitor.py             # 进度事件与连接管理
+│   │   └── context.py             # 当前会话上下文
+│   ├── prompt/prompts.yml         # 主智能体与助手提示词
+│   ├── tools/
+│   │   ├── db_tools.py            # MySQL 查询、超时与重试诊断
+│   │   ├── sql_safety.py          # SQL AST 校验与白名单策略
+│   │   ├── ragflow_tools.py       # 知识库助手调用
+│   │   ├── tavily_tool.py         # 网络搜索
+│   │   └── …                      # 附件读取、Markdown/PDF 工具
+│   ├── ragflow/                   # RAGFlow 配置与调用示例
+│   ├── utils/                     # 路径处理、文件转换
+│   ├── task_queue.py              # 持久化队列、状态与租约
+│   ├── worker.py                  # 领取任务、子进程执行与超时终止
+│   ├── data/                      # 运行时：accounts.sqlite3、events.sqlite3
+│   ├── updated/                   # 运行时：会话上传附件
+│   └── output/                    # 运行时：会话生成文件
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                # 会话列表、对话与任务操作
+│   │   ├── AuthGate.tsx           # 登录和注册界面
+│   │   ├── components/            # 对话、文件和进度组件
+│   │   ├── hooks/                 # 会话连接与滚动跟随
+│   │   └── lib/                   # API、历史重建和配置
+│   ├── package.json
+│   └── vite.config.ts             # 前端端口与开发代理
 ├── docker/
-│   ├── docker-compose.yaml         # 本地 MySQL 教学环境
-│   └── mysql/mysql.sql             # 药品、库存、销售记录模拟数据
-├── docs/knowledge_base/            # RAGFlow 知识库示例 PDF
-├── examples/                       # DeepAgents 章节示例脚本
-├── frontend/                       # React + Vite 前端项目
-├── tests/                          # 测试目录
-├── .env.example                    # 环境变量示例
-├── pyproject.toml                  # Python 项目依赖声明
-├── requirements.txt                # 依赖清单
-└── uv.lock                         # uv 锁定文件
+│   ├── docker-compose.yaml        # MySQL 容器与持久化数据卷
+│   └── mysql/mysql.sql            # 药品、库存、销售样例数据
+├── docs/
+│   ├── changes/                   # 更新记录与按日期编写的开发日志
+│   ├── event-persistence.md       # 持久化与恢复说明
+│   ├── task-queue.md              # 队列配置、恢复边界与验收
+│   └── sql-security.md            # SQL 安全策略
+├── tests/                         # 后端、历史恢复与滚动行为测试
+├── examples/                      # 原项目示例
+├── .env.example                   # 配置模板，不含真实密钥
+├── AGENTS.md                      # 项目协作与文档维护约定
+├── pyproject.toml
+├── requirements.txt
+└── uv.lock
 ```
 
-## 🚀 快速开始
+## 本地运行
 
-### 1. 准备环境
+需要 Python 3.12、uv、兼容前端依赖的 Node.js、npm，以及 Docker Compose（使用仓库提供的 MySQL 时）。准备支持工具调用的模型服务；网络搜索和知识库任务分别需要 Tavily 和 RAGFlow 服务。
 
-- Python `3.12`
-- `uv`
-- Docker 与 Docker Compose
-- Node.js 与 `pnpm`
-- 可用的大模型 API Key
-- Tavily API Key
-- RAGFlow 服务与 API Key
+以下命令以 Windows PowerShell 为例。
 
-### 2. 克隆项目
+### 1. 获取代码并安装依赖
 
-```bash
+```powershell
 git clone https://github.com/Rexxovoid/deepsearch-agents-v1.git
 cd deepsearch-agents-v1
-```
-
-### 3. 安装后端依赖
-
-```bash
 uv sync
+Copy-Item .env.example .env
 ```
 
-### 4. 配置环境变量
+已有 `.env` 时保留原配置，按模板补充所需字段。
 
-```bash
-cp .env.example .env
-```
+### 2. 配置服务
 
-按本机实际服务和密钥修改 `.env`：
+编辑根目录 `.env`，填写自己的配置；不要提交真实密钥。
 
-```bash
-# LLM 配置
-OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-OPENAI_API_KEY=你的大模型_API_KEY
-LLM_QWEN_MAX=qwen-max
+| 配置组 | 主要变量 | 说明 |
+| --- | --- | --- |
+| 模型 | `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`LLM_QWEN_MAX` | 模型接口、密钥和模型名称 |
+| 网络搜索 | `TAVILY_API_KEY` | Tavily 密钥 |
+| 知识库 | `RAGFLOW_API_URL`、`RAGFLOW_API_KEY`、`RAGFLOW_TIMEOUT_SECONDS` | 已部署的 RAGFlow 服务 |
+| 数据库 | `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` | 与实际数据库连接及容器映射保持一致 |
+| SQL 策略 | `MYSQL_ALLOWED_TABLES`、`MYSQL_QUERY_TIMEOUT_SECONDS`、`MYSQL_MAX_ROWS` | 默认白名单 drugs、inventory、sales_records；10 秒、最多 1000 行 |
+| 浏览器与登录 | `FRONTEND_ORIGINS`、`COOKIE_SECURE` | 本地允许的前端来源；HTTPS 部署时设置安全 Cookie |
+| 任务队列 | `TASK_QUEUE_*` | 默认并发 2，每次尝试 600 秒，失败后最多额外重试 3 次 |
 
-# Tavily 配置
-TAVILY_API_KEY=你的_TAVILY_API_KEY
+SQL 工具内部重试与任务队列重试是独立预算。详细规则见 [SQL 安全](docs/sql-security.md) 和 [任务队列](docs/task-queue.md)。修改 `.env` 后应重启后端及单独启动的 worker。
 
-# RAGFlow 配置
-RAGFLOW_API_URL=http://your-ragflow-host
-RAGFLOW_API_KEY=ragflow-your-api-key
+### 3. 启动 MySQL
 
-# MySQL 配置
-MYSQL_USER=root
-MYSQL_PASSWORD=root
-MYSQL_DATABASE=deepsearch_db
-MYSQL_HOST=localhost
-MYSQL_PORT=3307
-MYSQL_CHARSET=utf8mb4
-MYSQL_COLLATION=utf8mb4_unicode_ci
-MYSQL_SQL_MODE=TRADITIONAL
-```
+在项目根目录执行，显式加载根目录 `.env`：
 
-### 5. 启动 MySQL 教学库
-
-本仓库的 `docker/mysql/mysql.sql` 会在 MySQL 容器首次创建数据目录时自动导入药品、库存和销售记录模拟数据。
-
-在项目根目录（包含 `.env` 的目录）执行以下命令，显式加载同一份数据库配置。Compose 文件位于 `docker/`，不是 `docs/`。
-
-```bash
+```powershell
 docker compose --env-file .env -f docker/docker-compose.yaml up -d
+docker compose --env-file .env -f docker/docker-compose.yaml ps
 ```
 
-可用 `docker compose --env-file .env -f docker/docker-compose.yaml ps` 查看容器状态与实际端口映射，并核对 `.env` 中的 `MYSQL_PORT`。
+Compose 文件在 `docker/` 目录。模板使用 `MYSQL_PORT=3307`；现有环境应以实际端口映射为准，例如容器发布 3306 时，应用配置也需使用 3306。
 
-### 6. 准备 RAGFlow 知识库
+MySQL 使用命名数据卷保存数据。`docker/mysql/mysql.sql` 仅在首次初始化空数据目录时导入样例数据；已有数据卷不会重复导入。常规停止可使用同样参数执行 `stop`；`down -v` 会删除数据卷。
 
-RAGFlow 不在本仓库的 Docker Compose 中启动，需要接入你已有的 RAGFlow 服务，或按配套教程部署。`docs/knowledge_base/` 是个人学习资料目录，不上传 GitHub；使用者需自行准备有权使用的知识库文档。
+RAGFlow 不由本仓库 Compose 启动，需自行部署或接入已有服务，并准备可用的知识库助手。
 
-如果暂时不使用私有知识库能力，也可以先跑网络搜索、数据库查询和上传文件读取链路；只有任务触发 RAGFlow 助手时才会依赖 `RAGFLOW_API_URL` 和 `RAGFLOW_API_KEY`。
+### 4. 启动后端
 
-### 7. 启动后端
-
-```bash
+```powershell
 uv run uvicorn app.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-默认自动启动独立队列 worker，无需另装 Redis。生产环境可设置 `TASK_QUEUE_AUTOSTART=0`，另开终端运行 `uv run python -m app.worker`；两者需使用同一个项目目录和数据库。默认最多同时运行 2 项任务，每次尝试上限 600 秒，首次失败后最多自动重试 3 次。详细配置、取消和恢复规则见 [队列说明](docs/task-queue.md)。
+开发接口地址为 `http://localhost:8000`，接口文档为 `http://localhost:8000/docs`。默认后端自动管理独立 worker，无需安装 Redis。
 
-后端默认接口：
+需要单独管理 worker 时，在 `.env` 设置 `TASK_QUEUE_AUTOSTART=0`，重启后端，并在另一个项目根目录终端运行：
 
-| 接口                                | 说明                                   |
-| ----------------------------------- | -------------------------------------- |
-| `POST /api/task`                    | 持久化提交任务，返回 queued 和 job_id  |
-| `GET /api/task/{thread_id}`        | 查询本会话最新任务及排队状态           |
-| `POST /api/task/{thread_id}/retry` | 将本会话失败任务重新入队               |
-| `POST /api/task/{thread_id}/cancel` | 取消指定会话任务                       |
-| `POST /api/upload`                  | 上传一个或多个文件到当前会话           |
-| `GET /api/files`                    | 列出当前会话输出目录中的生成文件       |
-| `GET /api/download`                 | 下载输出目录中的文件                   |
-| `WebSocket /ws/{thread_id}`         | 推送工具调用、助手调用、结果和异常事件 |
-
-### 8. 启动前端
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
+```powershell
+uv run python -m app.worker
 ```
+
+API 与 worker 必须访问同一份队列数据库。`--reload` 用于开发；队列恢复规则见 [任务队列说明](docs/task-queue.md)。
+
+### 5. 启动前端
+
+新开终端，在项目根目录执行：
+
+```powershell
 cd frontend
+npm.cmd install
 npm.cmd run dev
-前端默认连接：
-
-```text
-API: http://localhost:8000
-WS:  ws://localhost:8000
 ```
 
-如需修改，可以在 `frontend/.env.local` 中配置：
+浏览器打开 **http://localhost:5173/**，注册或登录后即可创建研搜任务。5173 是前端开发端口，8000 是后端端口；前端端口配置在 `frontend/vite.config.ts`。端口占用时以 Vite 终端显示地址为准。
 
-```bash
+前端当前默认直接访问 `http://localhost:8000`，WebSocket 地址为 `ws://localhost:8000`，配置逻辑位于 `frontend/src/lib/config.ts`。Vite 同时配置了 `/api` 和 `/ws` 开发代理供相对路径请求使用。需要指定其他地址时，在 `frontend/.env.local` 配置并重启前端：
+
+```dotenv
 VITE_API_BASE_URL=http://localhost:8000
 VITE_WS_BASE_URL=ws://localhost:8000
 ```
-网页地址
-http://localhost:5173/
 
+前后端本地访问建议统一使用 `localhost`，配置不同来源时同步检查后端 `FRONTEND_ORIGINS`。更多前端说明见 [frontend/README.md](frontend/README.md)。
 
-### 9. 试几个任务
+## 使用方式
 
-```text
-从数据库中查询心血管药品的库存情况，并生成 Markdown 报告。
+1. 注册或登录账号，新建研搜任务，按需上传附件。
+2. 输入问题，例如“查询销售表前 40 条记录”或“读取附件并整理研究摘要”。
+3. 查看排队状态、助手执行进度、最终回答和生成文件。
+4. 在左侧切换历史会话；刷新页面可重新加载已保存的历史及运行状态。
+5. 可取消排队或运行任务；失败后使用“重试任务”重新入队。
+
+## 主要接口
+
+业务接口校验登录状态，会话资源还会校验所有者。
+
+| 接口 | 用途 |
+| --- | --- |
+| `POST /api/auth/register`、`POST /api/auth/login` | 注册和登录 |
+| `GET /api/auth/me`、`POST /api/logout` | 获取当前账号、退出 |
+| `GET /api/conversations` | 当前用户的历史会话 |
+| `GET /api/conversations/{thread_id}/uploads` | 本会话附件列表 |
+| `POST /api/task` | 提交任务并持久化入队 |
+| `GET /api/task/{thread_id}` | 最新任务状态、排队位置与错误 |
+| `POST /api/task/{thread_id}/retry` | 重新提交失败任务 |
+| `POST /api/task/{thread_id}/cancel` | 取消任务 |
+| `POST /api/upload` | 上传会话附件 |
+| `GET /api/files`、`GET /api/download` | 列出和下载生成文件 |
+| `WebSocket /ws/{thread_id}` | 历史事件回放与实时进度 |
+
+## 数据保存与恢复边界
+
+| 数据 | 保存位置 |
+| --- | --- |
+| 用户、登录会话与会话归属 | `app/data/accounts.sqlite3` |
+| 任务队列与执行事件 | `app/data/events.sqlite3` |
+| 用户上传附件 | `app/updated/` 下的会话目录 |
+| 生成文件 | `app/output/` 下的会话目录 |
+| MySQL 业务数据 | Docker 命名数据卷，或自行配置的 MySQL 实例 |
+
+账号支持跨浏览器登录后查看自己的会话。备份需同时保留两份 SQLite、会话文件和 MySQL 数据；SQLite 备份应协调停止写入，或使用一致性备份方式，避免遗漏 WAL 中的数据。
+
+当前队列面向同一主机的本地磁盘，不是多服务器分布式队列。故障恢复会重新尝试整项任务，可能重复模型调用或文件生成；不保证外部副作用恰好执行一次。LangGraph 的中间检查点仍使用内存存储。当前权限以账号和资源归属为主，尚未提供角色管理、文件病毒扫描或完整生产监控。
+
+## 验证修改
+
+在项目根目录运行后端自动化测试和前端行为测试：
+
+```powershell
+uv run python -m unittest discover -s tests -p 'test_*.py'
+node tests/test_history.cjs
+node tests/test_scroll_follow.cjs
+npm.cmd --prefix frontend run build
 ```
 
-```text
-搜索 2026 年 AI 在电商行业的应用趋势，并结合知识库资料生成一份 PDF。
+自动化测试包含替代数据库连接或替代模型执行，不代表真实外部服务已验证。修改数据库连接后，可额外实际测试表名查询：
+
+```powershell
+uv run python -c "from app.tools.db_tools import list_sql_tables; print(list_sql_tables.invoke({}))"
 ```
 
-```text
-请先读取我上传的行业报告，再结合公开资料整理一份研究摘要。
-```
+该命令会访问 `.env` 中配置的 MySQL。真实模型、Tavily、RAGFlow 和浏览器交互需按所修改功能单独验收。
 
-## 📚 配套教程目录
+## 项目文档
 
-教程总入口：[深度研搜完整教程](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%B7%B1%E5%BA%A6%E7%A0%94%E6%90%9C/0-%E5%89%8D%E8%A8%80)
-
-| 章节 | 标题                                                                                                                                   | 学习重点                                                      | 对应分支                              |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------- |
-| 0    | [前言](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/0-前言)                                                      | 项目定位、学习价值、技术栈和能力边界                          | `-`                                   |
-| 1    | [DeepAgents 基础与核心概念](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/1-DeepAgents基础与核心概念)             | 智能体演进、框架定位、核心能力和多智能体设计边界              | `-`                                   |
-| 2    | [DeepAgents 快速入门与流式解析](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/2-DeepAgents快速入门与流式解析)     | `create_deep_agent()`、`invoke`、`stream`、`chunk`            | `02-quickstart-streaming`             |
-| 3    | [子智能体进阶与异步执行](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/3-子智能体进阶与异步执行)                  | 字典式子智能体、助手调度、`astream` 和嵌套边界                | `03-deepagents-subagents-async`       |
-| 4    | [接入 LangGraph 与 LangChain](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/4-接入LangGraph与LangChain)           | `CompiledSubAgent`、LangGraph 子图、LangChain Agent 包装      | `04-deepagents-langgraph-langchain`   |
-| 5    | [人机协作与中断恢复](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/5-人机协作与中断恢复)                          | 人工审批、编辑工具参数、中断和恢复执行                        | `05-deepagents-hitl-interrupt`        |
-| 6    | [长期记忆与 Backend 存储](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/6-长期记忆与Backend存储)                  | `FilesystemBackend`、`StoreBackend`、`CompositeBackend`       | `06-deepagents-backends-memory`       |
-| 7    | [中间件机制与 Skills 配置](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/7-中间件机制与Skills配置)                | 上下文摘要、模型调用限制、工具调用限制、自定义中间件和 Skills | `07-deepagents-middleware-governance` |
-| 8    | [项目总览与工程初始化](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/8-项目总览与工程初始化)                      | 一主三从架构、9 个工具、前后端交互、工程目录                  | `09-deepsearch-core-config`           |
-| 9    | [基础模块与模型配置](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/9-基础模块与模型配置)                          | `.env`、`ContextVar`、`monitor`、路径工具、模型和提示词配置   | `09-deepsearch-core-config`           |
-| 10   | [网络搜索子智能体与 Tavily 工具](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/10-网络搜索子智能体与Tavily工具)   | `internet_search`、Tavily 配置、网络搜索助手组装和进度上报    | `10-deepsearch-network-subagent`      |
-| 11   | [数据库查询子智能体与 MySQL 工具](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/11-数据库查询子智能体与MySQL工具) | 本地 MySQL、查表、预览数据、执行 SQL、数据库助手组装          | `11-deepsearch-database-subagent`     |
-| 12   | [RAGFlow 子智能体与知识库准备](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/12-RAGFlow子智能体与知识库准备)      | RAGFlow 部署、助手列表查询、临时会话问答、知识库助手组装      | `12-deepsearch-ragflow-subagent`      |
-| 13   | [主智能体搭建与异步执行](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/13-主智能体搭建与异步执行)                 | 主智能体组装、上传文件读取、Markdown/PDF 工具、会话目录隔离   | `13-deepsearch-main-agent`            |
-| 14   | [FastAPI 接口与项目闭环](https://didilili.github.io/ai-agents-from-zero/#/实战项目-深度研搜/14-FastAPI接口与项目闭环)                  | 任务启动/取消、上传、文件列表、下载、WebSocket 和前端联调     | `14-deepsearch-api-websocket`         |
-
-可以用分支切换对照每一阶段的代码演进：
-
-```bash
-git checkout 10-deepsearch-network-subagent
-git checkout main
-```
-
-`main` 分支保留当前完整闭环版本。
-
-## 🚧 能力边界
-
-「深度研搜」适合入门到进阶阶段学习多智能体工程主链路，但它不是一个完整企业级生产系统。当前版本重点覆盖 DeepAgents 多智能体调度、真实工具接入、文件交付、FastAPI 接口、WebSocket 实时推送和前后端联调。
-
-它没有刻意展开以下生产治理能力：
-
-- 用户登录、角色权限和多租户隔离；
-- 文件上传安全扫描和内容审核；
-- 任务队列、分布式执行和大规模并发治理；
-- 全量事件持久化、历史会话恢复和审计追踪；
-- 系统化评测集、自动化回归和 Agent 质量评估；
-- 生产监控、告警、链路追踪和灰度发布；
-- 复杂报告编辑、协同工作流和权限化文件管理。
-
-这些能力适合在主链路跑通之后继续扩展。本仓库先承担一个清晰角色：把 DeepAgents 多智能体项目最关键、最必要、最值得学习的工程骨架讲清楚、跑起来，并为后续企业级扩展打基础。
+- [更新记录](docs/changes/update.md)：功能变更、验证结果及开发日志链接。
+- [事件持久化](docs/event-persistence.md)：刷新、重连与历史恢复。
+- [任务队列](docs/task-queue.md)：并发、重试、超时、取消与故障恢复。
+- [SQL 安全](docs/sql-security.md)：白名单、只读校验与查询限制。
