@@ -76,3 +76,11 @@ export async function listConversations(): Promise<Conversation[]> {
 export async function listSessionUploads(threadId: string): Promise<{ name: string; size: number }[]> {
   return requestJson(apiUrl(`/api/conversations/${encodeURIComponent(threadId)}/uploads`));
 }
+
+export async function getTaskStatus(threadId: string): Promise<import("../types").QueueTask> {
+  return requestJson(apiUrl(`/api/task/${encodeURIComponent(threadId)}`));
+}
+
+export async function retryTask(threadId: string): Promise<TaskResponse> {
+  return requestJson(apiUrl(`/api/task/${encodeURIComponent(threadId)}/retry`), { method: "POST" });
+}

@@ -47,7 +47,7 @@ main_agent = create_deep_agent(
 project_root_path = Path(__file__).parents[1].resolve()
 
 
-async def run_deep_agent(task_query, session_id):
+async def run_deep_agent(task_query, session_id, history_messages=None, managed=False):
     """
     异步流式执行主智能体
 
@@ -113,7 +113,7 @@ async def run_deep_agent(task_query, session_id):
     try:
         # astream 会持续产出模型节点、工具节点和子智能体节点的状态片段
         async for chunk in main_agent.astream(
-            {"messages": [{"role": "user", "content": task_query + path_instruction}]},
+            {"messages": [*(history_messages or []), {"role": "user", "content": task_query + path_instruction}]},
             config=config,
         ):
             # chunk 形如 {"model": {"messages": [...]}}，这里主要关心模型最新消息
@@ -145,9 +145,12 @@ async def run_deep_agent(task_query, session_id):
                             monitor.report_task_result(last_msg.content)
 
     except asyncio.CancelledError:
-        monitor.report_task_cancelled()
+        if not managed:
+            monitor.report_task_cancelled()
         raise
     except Exception as e:
+        if managed:
+            raise
         # 异步执行异常也走 monitor，保证前端能收到明确错误事件
         monitor._emit("error", f"执行主智能发生异常信息：{str(e)}")
     finally:

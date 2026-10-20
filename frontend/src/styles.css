@@ -864,6 +864,12 @@ textarea {
   font-size: 24px;
 }
 
+.chat-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .run-indicator {
   display: inline-flex;
   align-items: center;

@@ -9,13 +9,14 @@ import {
   ToolOutlined
 } from "@ant-design/icons";
 import { Alert, App as AntApp, Button } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatComposer } from "./components/ChatComposer";
 import { ConversationThread } from "./components/ConversationThread";
 import type { ChatTurn } from "./components/ConversationThread";
 import { API_BASE_URL, WS_BASE_URL } from "./lib/config";
 import { listConversations, type Conversation } from "./lib/api";
 import { useDeepAgentSession } from "./hooks/useDeepAgentSession";
+import { useFollowLatest } from "./hooks/useFollowLatest";
 import type { ConnectionState, UploadedItem } from "./types";
 
 function connectionLabel(state: ConnectionState): string {
@@ -45,8 +46,8 @@ export default function App({ username, onLogout }: { username: string; onLogout
   const [query, setQuery] = useState("");
   const [stagedItems, setStagedItems] = useState<UploadedItem[]>([]);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const streamRef = useRef<HTMLElement | null>(null);
   const session = useDeepAgentSession();
+  const stream = useFollowLatest<HTMLElement>(turns, session.threadId);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   useEffect(() => {
     let active = true;
@@ -72,11 +73,22 @@ export default function App({ username, onLogout }: { username: string; onLogout
 
   useEffect(() => {
     setTurns((previous) => {
-      if (previous.length === 0) {
+      const queued = session.events.find(event => event.event === "task_queued");
+      const jobId = typeof queued?.data.job_id === "string" ? queued.data.job_id : undefined;
+      let current = previous;
+      const latest = previous[previous.length - 1];
+      if (jobId && latest?.jobId !== jobId) {
+        if (latest && !latest.jobId && latest.isRunning && latest.content === queued?.data.query) {
+          current = [...previous.slice(0, -1), { ...latest, jobId }];
+        } else {
+          current = [...previous, { ...createTurn(String(queued?.data.query ?? "重新提交的研搜任务")), jobId }];
+        }
+      }
+      if (current.length === 0) {
         return previous;
       }
 
-      const latestTurn = previous[previous.length - 1];
+      const latestTurn = current[current.length - 1];
       const nextLatestTurn = {
         ...latestTurn,
         events: session.events,
@@ -85,23 +97,9 @@ export default function App({ username, onLogout }: { username: string; onLogout
         result: session.result
       };
 
-      return [...previous.slice(0, -1), nextLatestTurn];
+      return [...current.slice(0, -1), nextLatestTurn];
     });
   }, [session.events, session.files, session.isRunning, session.result]);
-
-  useEffect(() => {
-    const streamNode = streamRef.current;
-    if (!streamNode) {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      streamNode.scrollTo({
-        top: streamNode.scrollHeight,
-        behavior: "smooth"
-      });
-    });
-  }, [turns]);
 
   async function handleSubmit() {
     if (session.connectionState !== "connected") { message.info("正在恢复会话，请稍后再提交"); return; }
@@ -113,12 +111,13 @@ export default function App({ username, onLogout }: { username: string; onLogout
     }
 
     const nextTurn = createTurn(cleanQuery);
+    stream.resumeFollowing();
     setTurns((previous) => [...previous, nextTurn]);
     setQuery("");
 
     try {
       await session.submitTask(cleanQuery);
-      message.success("任务已启动，执行过程会显示在对话中");
+      message.success("任务已加入队列，执行过程会显示在对话中");
     } catch (error) {
       setTurns((previous) =>
         previous.map((turn) =>
@@ -162,6 +161,19 @@ export default function App({ username, onLogout }: { username: string; onLogout
   }
 
   const online = session.connectionState === "connected";
+  const taskLabel = session.taskStatus === "queued" ? `排队中${session.queuePosition ? ` · 第 ${session.queuePosition} 位` : ""}`
+    : session.taskStatus === "retry_wait" ? "等待重试"
+    : session.taskStatus === "cancelling" ? "正在取消"
+    : session.isRunning ? "研搜中" : "待命";
+
+  async function handleRetry() {
+    try {
+      await session.retryFailedTask();
+      message.success("失败任务已重新加入队列");
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "重新提交失败");
+    }
+  }
 
   return (
     <div className="chat-app-shell min-h-dvh">
@@ -242,9 +254,13 @@ export default function App({ username, onLogout }: { username: string; onLogout
             <span className="panel-kicker">CHAT WORKSPACE</span>
             <h2>深度研搜对话</h2>
           </div>
-          <div className={`run-indicator ${session.isRunning ? "run-indicator--live" : ""}`}>
-            {session.isRunning ? <BranchesOutlined aria-hidden /> : <CheckCircleOutlined aria-hidden />}
-            {session.isRunning ? "研搜中" : "待命"}
+          <div className="chat-topbar-actions">
+            {session.taskStatus === "failed" && <Button onClick={handleRetry}>重试任务</Button>}
+            {!stream.isFollowing && <Button onClick={stream.resumeFollowing}>回到最新</Button>}
+            <div className={`run-indicator ${session.isRunning ? "run-indicator--live" : ""}`}>
+              {session.isRunning ? <BranchesOutlined aria-hidden /> : <CheckCircleOutlined aria-hidden />}
+              {taskLabel}
+            </div>
           </div>
         </header>
 
@@ -257,7 +273,7 @@ export default function App({ username, onLogout }: { username: string; onLogout
           />
         ) : null}
 
-        <section className="chat-stream-panel" ref={streamRef}>
+        <section className="chat-stream-panel" ref={stream.ref} onScroll={stream.onScroll} onWheel={stream.onWheel}>
           <ConversationThread
             onUseExample={setQuery}
             turns={turns}

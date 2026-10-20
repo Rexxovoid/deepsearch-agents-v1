@@ -2,7 +2,52 @@
 
 按北京时间日期倒序汇总更新内容。问题定位及解决过程记录在本目录的 `YYYY-MM-DD-主题.md` 中。
 
+## 2026-10-20
+
+### Docker Compose 启动路径修正
+
+- 修复 README 将 Compose 文件误写为 `docs/docker-compose.yaml` 的问题，实际路径为 `docker/docker-compose.yaml`。
+- 统一 README 和 Compose 顶部说明：从项目根目录运行，显式加载根目录 `.env`，补充状态与端口核对命令。
+- 涉及文件：`README.md`、`docker/docker-compose.yaml`；验证为文档与实际路径核对，无需应用测试，未重启或重建数据库容器。
+- 开发日志：[启动路径排查](2026-10-20-docker-compose.md)。
+
+### 销售表查询连接失败修复
+
+- 确认本机 MySQL 容器实际发布端口为 3306，而 `.env` 指向 3307，导致列举表名前连接即被拒绝（2003 / Windows 10061）；本地配置已改为 3306。
+- SQL 重试日志与耗尽提示保留错误码及受控原因，连接错误提示核对端口映射；不回显驱动原始异常内容。
+- 涉及文件：本地忽略的 `.env`、`app/tools/db_tools.py`、`tests/test_sql_safety.py`。
+- 验证：16 项 SQL 测试通过；实际工具列举三张表成功，销售表前 40 条返回成功，重试次数 0。
+- 限制：正在运行的后端与独立 worker 需重启加载配置；未执行浏览器模型对话验收。
+- 开发日志：[定位证据与解决方法](2026-10-20-sql-query.md)。
+
+### 持久化任务队列
+
+- 后台执行从 API 内存任务改为 SQLite 持久化队列和独立 worker；默认自动启动，无需额外 Redis。
+- 增加 FIFO 排队、全局并发上限、自动重试及退避、独立进程硬超时、取消、心跳租约和崩溃恢复；默认并发 2、每次 600 秒、最多额外重试 3 次。
+- 增加任务状态与失败重试接口，沿用账号归属校验；前端显示排队、执行、等待重试、取消及手动重试。
+- 队列和事件复用 `events.sqlite3`；跨进程进度推送按 ID 去重，旧尝试令牌隔离晚到结果，对话消息从已完成历史重建。
+
+主要文件：`app/task_queue.py`、`app/worker.py`、`app/api/server.py`、`app/api/event_store.py`、`app/api/monitor.py`、`app/agent/main_agent.py`，以及前端会话/历史/状态组件和测试。
+
+验证：50 项后端测试通过，含实际独立进程执行、崩溃重试、超时终止、自动 worker 重启和跨进程 WebSocket；前端历史恢复、滚动回归、TypeScript/生产构建、依赖锁文件检查通过。
+
+限制：失败恢复会重新执行整项任务，不是 Agent 断点续跑，也不保证外部副作用恰好一次；仅支持同机本地磁盘队列。当前自动化使用替代模型任务，真实模型和浏览器交互需额外验收。
+
+使用说明：[任务队列](../task-queue.md)；开发日志：[问题与实现过程](2026-10-20-task-queue.md)。
+
 ## 2026-10-19
+
+### 历史阅读时保持页面位置
+
+- 主对话和执行过程列表改为仅在底部跟随新消息，向上翻阅时暂停自动滚动，避免新事件或轮询更新将页面拉回底部。
+- 增加“回到最新”按钮；滚回底部、点击按钮或发送新问题后恢复跟随，切换会话重新定位最新消息。
+- 增加排队滚动回调取消和执行前状态检查，避免用户滚动与自动跳转竞争。
+
+修改文件：`frontend/src/hooks/useFollowLatest.ts`、`frontend/src/App.tsx`、`frontend/src/components/ConversationThread.tsx`、`frontend/src/styles.css`、`tests/test_scroll_follow.cjs`。
+
+验证：滚动模拟回归测试、历史恢复测试、TypeScript 和生产构建通过；未完成真实浏览器交互验证。
+
+开发日志：[滚动问题与解决](2026-10-19-scroll.md)。
 
 ### SQL 安全与超时重试
 

@@ -10,6 +10,10 @@ import asyncio
 import shutil
 import uuid
 import datetime
+import subprocess
+import sys
+from contextlib import suppress
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
@@ -31,27 +35,73 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from app.agent.main_agent import run_deep_agent
 from app.api.monitor import manager
+from app.task_queue import QueueConflict, QueueSettings, QueueStore
 from app.api.auth import current_user, identify, login, COOKIE, connect as auth_connect
-from app.api.ownership import ensure_thread, name_thread, list_threads
+from app.api.ownership import ensure_thread, list_threads
 import hashlib
 import os
 
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
+
+def queue_store():
+    return app.state.queue
+
+
+def spawn_worker():
+    flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    environment = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
+    return subprocess.Popen([sys.executable, "-m", "app.worker", "--db", str(manager.store.path)],
+                            cwd=Path(__file__).resolve().parents[2], creationflags=flags, env=environment)
+
+
+async def deliver_queue_events(start_id):
+    cursor = start_id
+    while True:
+        for thread_id, event in manager.store.after(cursor):
+            await manager.send_to_thread(event, thread_id)
+            cursor = event["id"]
+        await asyncio.sleep(0.1)
+
+
+async def supervise_worker():
+    process = None
+    try:
+        while True:
+            if process is None or process.poll() is not None:
+                process = spawn_worker()
+            await asyncio.sleep(1)
+    finally:
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                await asyncio.to_thread(process.wait, timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                await asyncio.to_thread(process.wait, timeout=5)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """
-    服务生命周期入口。
-
-    启动时绑定当前事件循环到 WebSocket 管理器，确保后台 Agent 任务可以把
-    monitor 事件投递回 FastAPI 所在的 loop。
-    """
-    loop = asyncio.get_running_loop()
-    manager.set_loop(loop)
+    manager.set_loop(asyncio.get_running_loop())
+    _app.state.queue = QueueStore(manager.store)
+    _app.state.queue_settings = QueueSettings.from_env()
+    # Legacy pre-queue in-flight tasks have no durable input; retain their history.
     for thread_id in manager.store.unfinished_threads():
-        _publish_event(thread_id, "error", "后端服务已重启，之前的任务已中断，请重新提交。")
-    print(f"[Server] WebSocket Manager bound to loop: {id(loop)}")
-    yield
+        if _app.state.queue.latest(thread_id) is None:
+            _publish_event(thread_id, "error", "旧版任务已中断，没有队列记录，无法恢复，请重新提交。")
+    _app.state.queue.recover_expired(_app.state.queue_settings)
+    pump = asyncio.create_task(deliver_queue_events(manager.store.latest_id()))
+    supervisor = asyncio.create_task(supervise_worker()) if os.getenv("TASK_QUEUE_AUTOSTART", "1") == "1" else None
+    try:
+        yield
+    finally:
+        for task in (supervisor, pump):
+            if task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
 
 
 # 当前文件位于 app/api/server.py，运行时目录统一收敛到 app 目录
@@ -59,9 +109,6 @@ current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
 
 app = FastAPI(title="DeepAgents API", lifespan=lifespan)
-
-# 保存 thread_id -> 后台 Agent 任务，用于同一会话任务替换和主动取消
-active_tasks: dict[str, asyncio.Task] = {}
 
 # output 保存每个会话最终工作区，前端只允许从这里浏览和下载生成文件
 output_dir = project_root / "output"
@@ -163,95 +210,46 @@ def _publish_event(thread_id: str, event: str, message: str, data: dict | None =
     })
 
 
-async def _run_task(query: str, thread_id: str):
-    try:
-        await run_deep_agent(query, thread_id)
-    except asyncio.CancelledError:
-        # Covers cancellation before the agent establishes its context as well.
-        if manager.store.history(thread_id)[-1]["event"] != "task_cancelled":
-            _publish_event(thread_id, "task_cancelled", "任务已取消")
-        raise
-    except Exception as exc:
-        _publish_event(thread_id, "error", f"任务执行失败：{exc}")
-
-
-def _forget_task(thread_id: str, task: asyncio.Task) -> None:
-    """
-    清理已结束任务的登记关系。
-
-    done_callback 触发时，active_tasks 中可能已经被新任务替换；只有仍是同一个
-    task 时才删除，避免误清理同 thread_id 下刚启动的新任务。
-    """
-    if active_tasks.get(thread_id) is task:
-        if task.cancelled():
-            history = manager.store.history(thread_id)
-            if history and history[-1]["event"] not in {"task_cancelled", "task_result", "error"}:
-                _publish_event(thread_id, "task_cancelled", "任务已取消")
-        active_tasks.pop(thread_id, None)
-
-
 @app.post("/api/task")
 async def run_task(request: TaskRequest, user: str = Depends(current_user)):
-    """
-    启动一次 DeepAgents 后台任务。
-
-    HTTP 请求只负责创建后台协程并立即返回，后续执行轨迹、子智能体调用和最终
-    答案都会由 monitor 通过 `/ws/{thread_id}` 推送给同一会话的前端。
-    """
     thread_id = request.thread_id or str(uuid.uuid4())
     ensure_thread(manager.store, thread_id, user, create=True)
-    if not request.query.strip():
+    query = request.query.strip()
+    if not query:
         raise HTTPException(400, "请输入研搜任务")
-    name_thread(manager.store, thread_id, request.query.strip())
+    try:
+        job = queue_store().enqueue(thread_id, query, app.state.queue_settings)
+    except QueueConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"status": "queued", "thread_id": thread_id, "job_id": job["id"]}
 
-    # 同一个 thread_id 只保留一个活跃任务，新任务会先取消旧任务，避免并发写同一会话目录
-    old_task = active_tasks.get(thread_id)
-    if old_task and not old_task.done():
-        old_task.cancel()
-        try:
-            await old_task
-        except asyncio.CancelledError:
-            pass
 
-    _publish_event(thread_id, "task_started", "任务已启动", {"query": request.query})
+@app.get("/api/task/{thread_id}")
+async def task_status(thread_id: str, user: str = Depends(current_user)):
+    ensure_thread(manager.store, thread_id, user)
+    return queue_store().status(thread_id)
 
-    # create_task 把长耗时 Agent 执行交给事件循环，接口本身不用等待最终结果
-    task = asyncio.create_task(_run_task(request.query, thread_id))
-    active_tasks[thread_id] = task
-    task.add_done_callback(lambda finished_task: _forget_task(thread_id, finished_task))
 
-    return {"status": "started", "thread_id": thread_id}
+@app.post("/api/task/{thread_id}/retry")
+async def retry_task(thread_id: str, user: str = Depends(current_user)):
+    ensure_thread(manager.store, thread_id, user)
+    previous = queue_store().latest(thread_id)
+    if not previous or previous["status"] != "failed":
+        raise HTTPException(409, "仅可重新提交已失败的任务")
+    try:
+        job = queue_store().enqueue(thread_id, previous["query"], app.state.queue_settings, retry_of=previous["id"])
+    except QueueConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"status": "queued", "thread_id": thread_id, "job_id": job["id"]}
 
 
 @app.post("/api/task/{thread_id}/cancel")
 async def cancel_task(thread_id: str, user: str = Depends(current_user)):
-    """
-    取消指定 thread_id 对应的后台 Agent 任务。
-
-    注意：取消会向 asyncio.Task 注入 CancelledError。若底层第三方工具正在执行不可中断
-    的同步阻塞调用，任务可能需要等该调用返回后才会真正结束。
-    """
     ensure_thread(manager.store, thread_id, user)
-    task = active_tasks.get(thread_id)
-    if not task or task.done():
-        active_tasks.pop(thread_id, None)
-        raise HTTPException(status_code=404, detail="任务不存在或已结束")
-
-    # 先发出取消信号，再短暂等待协程响应；若底层阻塞中，则返回 cancelling 给前端继续展示状态
-    task.cancel()
-    try:
-        await asyncio.wait_for(task, timeout=1.0)
-    except asyncio.CancelledError:
-        _forget_task(thread_id, task)
-        return {"status": "cancelled", "thread_id": thread_id}
-    except asyncio.TimeoutError:
-        return {"status": "cancelling", "thread_id": thread_id}
-    except Exception as e:
-        _forget_task(thread_id, task)
-        return {"status": "cancelled", "thread_id": thread_id, "message": str(e)}
-
-    _forget_task(thread_id, task)
-    return {"status": "cancelled", "thread_id": thread_id}
+    status = queue_store().cancel(thread_id)
+    if status is None:
+        raise HTTPException(404, "没有可取消的任务")
+    return {"status": status, "thread_id": thread_id}
 
 
 @app.post("/api/upload")
@@ -351,9 +349,9 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
         return
 
     # 连接建立后立即按 thread_id 注册，monitor 后续才能把事件定向推给当前页面
-    await manager.connect(websocket, thread_id, lambda: (
-        thread_id in active_tasks and not active_tasks[thread_id].done()
-    ))
+    await manager.connect(websocket, thread_id,
+                          lambda: queue_store().status(thread_id)["is_running"],
+                          lambda: queue_store().status(thread_id))
 
     try:
         while True:

@@ -35,7 +35,7 @@ current task status, attachments and generated files.
 
 Account/password hashes and expiring login sessions are stored in
 `app/data/accounts.sqlite3`; conversation ownership and event history are stored in
-`app/data/events.sqlite3`. Back up both databases together. Passwords use salted
+`app/data/events.sqlite3`, which also stores durable queued jobs. Back up both databases together. Passwords use salted
 scrypt hashes. Login tokens are carried in an HttpOnly cookie; ownership is checked
 on the backend for task submission/cancellation, history, WebSocket connections,
 uploads, file listing and downloads.
@@ -56,8 +56,9 @@ changing these settings.
 
 Pre-account legacy history/files have no verified owner and are not automatically
 assigned or exposed to new accounts. An administrator must verify ownership before
-performing a migration. Backend restarts retain history but interrupt running tasks;
-Agent checkpoints are still held in memory.
+performing a migration. Queued jobs survive backend restarts. Interrupted attempts
+are retried from the beginning after lease expiry within their retry budget;
+Agent checkpoints are still held in memory. See [task queue](../docs/task-queue.md).
 
 Validation:
 

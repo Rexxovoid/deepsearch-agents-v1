@@ -20,6 +20,7 @@
 本仓库在原项目基础上主要增加或完善：
 
 - **事件持久化与刷新恢复**：SQLite 保存任务事件，刷新或断线后恢复历史并继续查看后台任务。
+- **持久化任务队列**：独立 worker 进程处理排队、并发、失败重试、硬超时和崩溃恢复，详见 [队列说明](docs/task-queue.md)。
 - **历史会话管理**：左侧会话列表、新建与切换会话，以首个问题命名。
 - **账号和权限隔离**：注册、登录、退出，以及任务、WebSocket、上传附件和生成文件的所有权校验。
 - **RAGFlow 调用完善**：接口兼容、配置校验、超时、业务错误处理和临时会话清理。
@@ -28,7 +29,7 @@
 
 本仓库为扩展版本，非原作者官方仓库。下文保留的原项目架构介绍、教程及相关素材链接，其来源为上述原项目；教程和章节分支请以原仓库为准。
 
-当前持久化支持浏览器刷新恢复；后端进程重启仍会中断运行中的任务，历史记录继续保留。
+当前版本支持刷新恢复和持久化队列：排队任务重启后仍保留，失去 worker 的任务在租约过期后按重试预算重新执行。恢复会从任务开头执行，不是恢复 Agent 中间步骤。
 
 如果你正在找一个适合学习 `DeepAgents`、`WebSocket`、`Tavily`、`RAGFlow` 和 AI Agent 工程开发的实战项目，「深度研搜」很可能是最适合你的项目。
 
@@ -238,13 +239,17 @@ MYSQL_SQL_MODE=TRADITIONAL
 
 本仓库的 `docker/mysql/mysql.sql` 会在 MySQL 容器首次创建数据目录时自动导入药品、库存和销售记录模拟数据。
 
+在项目根目录（包含 `.env` 的目录）执行以下命令，显式加载同一份数据库配置。Compose 文件位于 `docker/`，不是 `docs/`。
+
 ```bash
-docker compose -f docker/docker-compose.yaml up -d
+docker compose --env-file .env -f docker/docker-compose.yaml up -d
 ```
+
+可用 `docker compose --env-file .env -f docker/docker-compose.yaml ps` 查看容器状态与实际端口映射，并核对 `.env` 中的 `MYSQL_PORT`。
 
 ### 6. 准备 RAGFlow 知识库
 
-RAGFlow 不在本仓库的 Docker Compose 中启动，需要接入你已有的 RAGFlow 服务，或按配套教程部署。仓库内的 `docs/knowledge_base/` 提供了电商、金融等示例 PDF，可用于创建 RAGFlow 知识库和聊天助手。
+RAGFlow 不在本仓库的 Docker Compose 中启动，需要接入你已有的 RAGFlow 服务，或按配套教程部署。`docs/knowledge_base/` 是个人学习资料目录，不上传 GitHub；使用者需自行准备有权使用的知识库文档。
 
 如果暂时不使用私有知识库能力，也可以先跑网络搜索、数据库查询和上传文件读取链路；只有任务触发 RAGFlow 助手时才会依赖 `RAGFLOW_API_URL` 和 `RAGFLOW_API_KEY`。
 
@@ -254,11 +259,15 @@ RAGFlow 不在本仓库的 Docker Compose 中启动，需要接入你已有的 R
 uv run uvicorn app.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+默认自动启动独立队列 worker，无需另装 Redis。生产环境可设置 `TASK_QUEUE_AUTOSTART=0`，另开终端运行 `uv run python -m app.worker`；两者需使用同一个项目目录和数据库。默认最多同时运行 2 项任务，每次尝试上限 600 秒，首次失败后最多自动重试 3 次。详细配置、取消和恢复规则见 [队列说明](docs/task-queue.md)。
+
 后端默认接口：
 
 | 接口                                | 说明                                   |
 | ----------------------------------- | -------------------------------------- |
-| `POST /api/task`                    | 启动一次 DeepAgents 后台任务           |
+| `POST /api/task`                    | 持久化提交任务，返回 queued 和 job_id  |
+| `GET /api/task/{thread_id}`        | 查询本会话最新任务及排队状态           |
+| `POST /api/task/{thread_id}/retry` | 将本会话失败任务重新入队               |
 | `POST /api/task/{thread_id}/cancel` | 取消指定会话任务                       |
 | `POST /api/upload`                  | 上传一个或多个文件到当前会话           |
 | `GET /api/files`                    | 列出当前会话输出目录中的生成文件       |
@@ -272,7 +281,8 @@ cd frontend
 pnpm install
 pnpm dev
 ```
-
+cd frontend
+npm.cmd run dev
 前端默认连接：
 
 ```text
@@ -286,6 +296,9 @@ WS:  ws://localhost:8000
 VITE_API_BASE_URL=http://localhost:8000
 VITE_WS_BASE_URL=ws://localhost:8000
 ```
+网页地址
+http://localhost:5173/
+
 
 ### 9. 试几个任务
 

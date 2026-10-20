@@ -26,6 +26,7 @@ TIMEOUT_ERRORS = {1205, 3024}
 class SQLRetryBudget:
     retries: int = 0
     stopped: bool = False
+    last_failure: str = ""
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def claim_retry(self):
@@ -115,20 +116,27 @@ def _run_query(policy, sql=None, tables=frozenset()):
     budget = _retry_budget.get() or SQLRetryBudget()
     while True:
         if budget.stopped:
-            return "[SQL_RETRY_EXHAUSTED] 已达到 3 次重试上限，本任务停止数据库访问，请勿再次调用 SQL 工具。"
+            return f"[SQL_RETRY_EXHAUSTED] {budget.last_failure}；已达到 3 次重试上限，本任务停止数据库访问，请勿再次调用 SQL 工具。"
         try:
             return _execute_once(config, policy, sql, tables)
         except Error as exc:
             timeout = isinstance(exc, (ConnectionTimeoutError, ReadTimeoutError, WriteTimeoutError)) or exc.errno in TIMEOUT_ERRORS
+            # Use controlled diagnostics: driver messages can contain SQL/data.
+            if exc.errno in {2002, 2003}:
+                failure = f"无法连接 MySQL（错误码 {exc.errno}），请核对 MYSQL_HOST、MYSQL_PORT、数据库服务状态及容器端口映射"
+            elif timeout:
+                failure = f"数据库连接或查询超时（错误码 {exc.errno}）"
+            else:
+                failure = f"数据库连接或执行故障（错误码 {exc.errno}）"
+            budget.last_failure = failure
             transient = timeout or exc.errno in TRANSIENT_ERRORS
             if not transient:
                 # Do not repeat syntax, authentication, permission or schema errors.
                 return f"[SQL_ERROR] 数据库查询失败（错误码 {exc.errno}），不会自动重试；请检查语法、数据库权限和配置。"
             retry = budget.claim_retry()
             if retry is None:
-                reason = "查询或连接超时" if timeout else "临时连接故障"
-                return f"[SQL_RETRY_EXHAUSTED] {reason}，已达到 3 次重试上限，本任务停止数据库访问。"
-            monitor.report_tool("SQL 查询自动重试", {"retry": retry, "max_retries": MAX_RETRIES, "timeout": timeout})
+                return f"[SQL_RETRY_EXHAUSTED] {failure}；首次执行及 3 次自动重试均失败，本任务停止数据库访问。"
+            monitor.report_tool("SQL 查询自动重试", {"retry": retry, "max_retries": MAX_RETRIES, "timeout": timeout, "mysql_errno": exc.errno, "reason": failure})
             time.sleep(0.25 * (2 ** (retry - 1)))
 
 

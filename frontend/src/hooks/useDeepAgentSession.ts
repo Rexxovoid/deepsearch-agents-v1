@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cancelTask, listSessionFiles, listSessionUploads, startTask, uploadSessionFiles } from "../lib/api";
+import { cancelTask, getTaskStatus, listSessionFiles, listSessionUploads, retryTask, startTask, uploadSessionFiles } from "../lib/api";
 import { WS_BASE_URL } from "../lib/config";
 import { createThreadId, getStoredThreadId, storeThreadId } from "../lib/thread";
 import { restoreHistory } from "../lib/history";
 import type { ChatTurn } from "../components/ConversationThread";
+import type { QueueTaskStatus } from "../types";
 import type {
   ConnectionState,
   MonitorMessage,
@@ -35,6 +36,8 @@ export function useDeepAgentSession() {
   const [lastError, setLastError] = useState("");
   const [lastPongAt, setLastPongAt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<QueueTaskStatus>("idle");
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedItems, setUploadedItems] = useState<UploadedItem[]>([]);
@@ -66,6 +69,8 @@ export function useDeepAgentSession() {
     setIsRunning(false);
     setIsCancelling(false);
     setIsUploading(false);
+    setTaskStatus("idle");
+    setQueuePosition(null);
   }, []);
 
   const resetSession = useCallback(() => selectSession(createThreadId()), [selectSession]);
@@ -127,7 +132,9 @@ export function useDeepAgentSession() {
             setResult(history.result);
             setLastError(history.lastError);
             setIsRunning(payload.is_running);
-            setIsCancelling(false);
+            setTaskStatus(payload.task?.status ?? (payload.is_running ? "running" : "idle"));
+            setQueuePosition(payload.task?.queue_position ?? null);
+            setIsCancelling(payload.task?.status === "cancelling");
             return;
           }
           if (payload.type === "pong") {
@@ -144,16 +151,32 @@ export function useDeepAgentSession() {
             seenEventIdsRef.current.add(payload.id);
           }
 
-          if (payload.event === "task_started") {
+          if (payload.event === "task_started" || payload.event === "task_queued") {
             setEvents([payload]);
             setResult("");
             setLastError("");
             setIsRunning(true);
+            setTaskStatus(payload.event === "task_queued" ? "queued" : "running");
             setIsCancelling(false);
             return;
           }
 
           setEvents((previous) => [...previous, payload]);
+          if (payload.event === "task_running" || payload.event === "task_retrying") {
+            setTaskStatus(payload.event === "task_running" ? "running" : "retry_wait");
+            setQueuePosition(null);
+            setResult("");
+            setIsRunning(true);
+          }
+          if (payload.event === "task_cancelling") {
+            setTaskStatus("cancelling");
+            setIsCancelling(true);
+          }
+          if (payload.event === "task_completed") {
+            setTaskStatus("succeeded");
+            setIsRunning(false);
+            setIsCancelling(false);
+          }
 
           if (payload.event === "session_created") {
             const path = extractString(payload.data, "path");
@@ -165,17 +188,23 @@ export function useDeepAgentSession() {
           if (payload.event === "task_result") {
             const finalResult = extractString(payload.data, "result");
             setResult(finalResult || payload.message);
-            setIsRunning(false);
-            setIsCancelling(false);
+            if (!payload.data.job_id) {
+              setIsRunning(false);
+              setIsCancelling(false);
+              setTaskStatus("succeeded");
+            }
           }
 
           if (payload.event === "task_cancelled") {
-            setResult((previous) => previous || payload.message);
+            setTaskStatus("cancelled");
+            setResult((previous) => payload.data.job_id ? payload.message : previous || payload.message);
             setIsRunning(false);
             setIsCancelling(false);
           }
 
           if (payload.event === "error") {
+            setTaskStatus("failed");
+            if (payload.data.job_id) setResult(payload.message);
             setLastError(payload.message);
             setIsRunning(false);
             setIsCancelling(false);
@@ -255,6 +284,7 @@ export function useDeepAgentSession() {
       }
 
       setIsRunning(true);
+      setTaskStatus("queued");
       setIsCancelling(false);
       setEvents([]);
       setResult("");
@@ -352,8 +382,30 @@ export function useDeepAgentSession() {
     };
   }, [events, files.length]);
 
+  useEffect(() => {
+    if (!isRunning) return;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const state = await getTaskStatus(threadId);
+        if (disposed || currentThreadRef.current !== threadId || state.status === "idle") return;
+        setTaskStatus(state.status);
+        setQueuePosition(state.queue_position);
+        setIsRunning(state.is_running);
+        setIsCancelling(state.status === "cancelling");
+      } catch { /* Reconnect restores the durable snapshot. */ }
+    };
+    const timer = window.setInterval(refresh, 2000);
+    return () => { disposed = true; window.clearInterval(timer); };
+  }, [isRunning, threadId]);
+
+  const retryFailedTask = useCallback(() => retryTask(threadId), [threadId]);
+
   return {
     connectionState,
+    taskStatus,
+    queuePosition,
+    retryFailedTask,
     events,
     files,
     isCancelling,

@@ -1,4 +1,5 @@
 ﻿import asyncio
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,12 +14,11 @@ class OwnershipTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        self.patches = [patch.object(auth, 'DB_PATH', self.root/'accounts.db'),
+        self.patches = [patch.dict(os.environ, {'TASK_QUEUE_AUTOSTART':'0'}), patch.object(auth, 'DB_PATH', self.root/'accounts.db'),
                         patch.object(server.manager, 'store', EventStore(self.root/'events.db')),
                         patch.object(server, 'output_dir', self.root/'output'),
                         patch.object(server, 'updated_dir', self.root/'updated')]
         for p in self.patches: p.start()
-        server.active_tasks.clear()
         server.manager.active_connections.clear()
         server.manager.send_locks.clear()
         server.manager.loop = None
@@ -29,9 +29,7 @@ class OwnershipTests(unittest.TestCase):
         response=client.post('/api/auth/register', json={'username':name,'password':'test-password-123'})
         self.assertEqual(response.status_code,200,response.text)
     def test_accounts_ownership_and_files(self):
-        async def fake_agent(query, thread):
-            await asyncio.Event().wait()
-        with patch.object(server,'run_deep_agent',fake_agent), TestClient(server.app) as alice, TestClient(server.app) as bob:
+        with TestClient(server.app) as alice, TestClient(server.app) as bob:
             self.assertEqual(alice.get('/api/conversations').status_code,401)
             self.register(alice,'alice'); self.register(bob,'bob')
             self.assertEqual(alice.post('/api/task',json={'query':'第一个问题','thread_id':'alice-task'}).status_code,200)
@@ -39,6 +37,8 @@ class OwnershipTests(unittest.TestCase):
             self.assertEqual(alice.post('/api/task',json={'query':'第二个问题','thread_id':'alice-task'}).status_code,200)
             self.assertEqual(alice.get('/api/conversations').json()[0]['title'],'第一个问题')
             self.assertEqual(bob.get('/api/conversations').json(),[])
+            self.assertEqual(bob.get('/api/task/alice-task').status_code,404)
+            self.assertEqual(bob.post('/api/task/alice-task/retry').status_code,404)
             self.assertEqual(bob.get('/api/conversations/alice-task/uploads').status_code,404)
             self.assertEqual(alice.post('/api/logout',headers={'Origin':'https://evil.example'}).status_code,403)
             self.assertEqual(bob.post('/api/task',json={'query':'case attack','thread_id':'ALICE-task'}).status_code,400)

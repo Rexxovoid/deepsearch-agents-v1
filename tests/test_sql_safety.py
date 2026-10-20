@@ -146,6 +146,22 @@ class SQLExecutionTests(unittest.TestCase):
                 self.assertEqual(db_tools._retry_budget.get().retries, 1)
         finally: db_tools.end_sql_retry_scope(token)
 
+    def test_connection_failure_diagnostic_survives_exhausted_budget(self):
+        token = db_tools.begin_sql_retry_scope()
+        try:
+            with patch.object(db_tools, "_execute_once", side_effect=Error(msg="private-detail", errno=2003)) as execute:
+                first = db_tools.list_sql_tables.invoke({})
+                second = db_tools.list_sql_tables.invoke({})
+                for result in (first, second):
+                    self.assertIn("SQL_RETRY_EXHAUSTED", result)
+                    self.assertIn("2003", result)
+                    self.assertIn("MYSQL_PORT", result)
+                    self.assertNotIn("private-detail", result)
+                self.assertEqual(execute.call_count, 4)
+                self.assertEqual(db_tools.monitor.report_tool.call_args_list[-2].args[1]["mysql_errno"], 2003)
+        finally:
+            db_tools.end_sql_retry_scope(token)
+
     def test_connection_is_read_only_deadlined_and_bounds_csv(self):
         conn = MagicMock()
         cursor = MagicMock()

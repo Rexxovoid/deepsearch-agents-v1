@@ -44,6 +44,15 @@ class EventStore:
             ).fetchall()
         return [{**json.loads(payload), "id": event_id} for event_id, payload in rows]
 
+    def latest_id(self):
+        with self._connect() as conn:
+            return conn.execute("SELECT COALESCE(MAX(id),0) FROM events").fetchone()[0]
+
+    def after(self, event_id, limit=200):
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id,thread_id,payload FROM events WHERE id>? ORDER BY id LIMIT ?", (event_id, limit)).fetchall()
+        return [(thread, {**json.loads(payload), "id": item_id}) for item_id, thread, payload in rows]
+
     def unfinished_threads(self) -> list[str]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -51,7 +60,7 @@ class EventStore:
                 "(SELECT thread_id, MAX(id) AS id FROM events GROUP BY thread_id) latest "
                 "ON e.id = latest.id"
             ).fetchall()
-        terminal = {"task_result", "task_cancelled", "error"}
+        terminal = {"task_result", "task_completed", "task_cancelled", "error"}
         return [thread for thread, payload in rows if json.loads(payload)["event"] not in terminal]
 
 

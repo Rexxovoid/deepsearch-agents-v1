@@ -148,6 +148,7 @@ class ConnectionManager:
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.store = event_store
         self.send_locks: dict[str, asyncio.Lock] = {}
+        self.last_sent: dict[str, int] = {}
 
     def publish(self, thread_id: str, payload: dict) -> dict:
         # Commit before scheduling delivery: even disconnected clients retain events.
@@ -165,16 +166,20 @@ class ConnectionManager:
     async def connect(
         self, websocket: WebSocket, thread_id: str,
         is_running: bool | Callable[[], bool] = False,
+        task_status: Callable[[], dict] | None = None,
     ) -> None:
         """接受 WebSocket 连接，并按 thread_id 保存"""
         await websocket.accept()
         lock = self.send_locks.setdefault(thread_id, asyncio.Lock())
         async with lock:
             self.active_connections[thread_id] = websocket
+            history = self.store.history(thread_id)
+            self.last_sent[thread_id] = history[-1]["id"] if history else 0
             await websocket.send_json({
                 "type": "event_history",
-                "events": self.store.history(thread_id),
+                "events": history,
                 "is_running": is_running() if callable(is_running) else is_running,
+                "task": task_status() if task_status else None,
             })
         print(f"Client connected: {thread_id}")
 
@@ -197,7 +202,11 @@ class ConnectionManager:
             websocket = self.active_connections.get(thread_id)
             if websocket:
                 try:
+                    if message.get("id", 0) and message["id"] <= self.last_sent.get(thread_id, 0):
+                        return
                     await websocket.send_json(message)
+                    if message.get("id"):
+                        self.last_sent[thread_id] = message["id"]
                 except Exception as e:
                     self.disconnect(websocket, thread_id)
                     print(f"[Monitor] WebSocket send failed: {e}")

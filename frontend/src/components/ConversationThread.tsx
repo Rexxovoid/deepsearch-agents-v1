@@ -14,13 +14,15 @@ import {
   ToolOutlined,
 } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getDownloadUrl } from "../lib/api";
+import { useFollowLatest } from "../hooks/useFollowLatest";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import type { MonitorMessage, OutputFile } from "../types";
 
 export interface ChatTurn {
   id: string;
+  jobId?: string;
   content: string;
   events: MonitorMessage[];
   files: OutputFile[];
@@ -176,18 +178,7 @@ function FileIcon({ name }: { name: string }) {
 }
 
 function ThinkingTimeline({ events }: { events: MonitorMessage[] }) {
-  const timelineRef = useRef<HTMLOListElement | null>(null);
-
-  useEffect(() => {
-    const timelineNode = timelineRef.current;
-    if (!timelineNode) {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      timelineNode.scrollTop = timelineNode.scrollHeight;
-    });
-  }, [events.length]);
+  const timeline = useFollowLatest<HTMLOListElement>(events.length);
 
   if (events.length === 0) {
     return (
@@ -199,7 +190,7 @@ function ThinkingTimeline({ events }: { events: MonitorMessage[] }) {
   }
 
   return (
-    <ol className="thinking-timeline" ref={timelineRef}>
+    <ol className="thinking-timeline" ref={timeline.ref} onScroll={timeline.onScroll} onWheel={timeline.onWheel}>
       {events.map((event, index) => (
         <li
           className={`thinking-event thinking-event--${event.event}`}
@@ -312,9 +303,11 @@ function AssistantMessage({
   }, [isRunning]);
 
   const durationLabel = getThinkingDuration(events, timestamp, isRunning, now);
+  const lifecycle = [...events].reverse().find(event => ["task_queued", "task_running", "task_retrying", "task_cancelling", "task_completed", "error", "task_cancelled"].includes(event.event));
+  const waitLabel = lifecycle?.event === "task_queued" ? "排队中" : lifecycle?.event === "task_retrying" ? "等待重试" : lifecycle?.event === "task_cancelling" ? "正在取消" : null;
   const isCancelled = events.some((event) => event.event === "task_cancelled");
   const syncLabel = isRunning
-    ? `生成中 · 思考 ${durationLabel}`
+    ? `${waitLabel ?? "生成中"} · 已等待 ${durationLabel}`
     : `${isCancelled ? "已取消" : "已同步"} · 用时 ${durationLabel}`;
 
   return (
@@ -347,7 +340,7 @@ function AssistantMessage({
         ) : (
           <div className="assistant-answer assistant-answer--pending">
             {isRunning ? (
-              <ThinkingLoader durationLabel={durationLabel} />
+              waitLabel ? <p role="status">{waitLabel}，执行进度会自动更新。</p> : <ThinkingLoader durationLabel={durationLabel} />
             ) : (
               "任务完成后会在这里显示最终回复。"
             )}

@@ -43,4 +43,21 @@ assert.equal(interrupted.turns[1].isRunning, false);
 const cancelled = restoreHistory([...history, event(6, "task_cancelled", {}, "任务已取消")], false);
 assert.equal(cancelled.result, "任务已取消");
 assert.deepEqual(restoreHistory([], false).turns, []);
+
+const queued = [event(1, "task_queued", { query: "queued question", job_id: "job-1" })];
+assert.equal(restoreHistory(queued, true).turns[0].jobId, "job-1");
+const retried = [...queued,
+  event(2, "task_running", { job_id: "job-1", attempt: 1 }),
+  event(3, "task_result", { job_id: "job-1", result: "partial" }),
+  event(4, "task_retrying", { job_id: "job-1" }),
+  event(5, "task_running", { job_id: "job-1", attempt: 2 })];
+assert.equal(restoreHistory(retried, true).turns.length, 1, "an automatic retry is the same turn");
+assert.equal(restoreHistory(retried, true).result, "", "failed-attempt output is cleared before retry");
+const finalFailure = restoreHistory([...retried,
+  event(6, "task_result", { job_id: "job-1", result: "not-final" }),
+  event(7, "error", { job_id: "job-1" }, "failed permanently")], false);
+assert.equal(finalFailure.result, "failed permanently");
+const manualRetry = restoreHistory([...retried,
+  event(6, "task_queued", { job_id: "job-2", query: "queued question" })], true);
+assert.equal(manualRetry.turns.length, 2, "manual resubmission creates its own turn");
 console.log("PASS: multiple turns, running refresh, result, interruption, cancellation, empty session");

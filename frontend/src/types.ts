@@ -27,6 +27,18 @@ export interface EventHistoryMessage {
   type: "event_history";
   events: MonitorMessage[];
   is_running: boolean;
+  task?: QueueTask | null;
+}
+
+export type QueueTaskStatus = "idle" | "queued" | "running" | "retry_wait" | "cancelling" | "succeeded" | "failed" | "cancelled";
+export interface QueueTask {
+  job_id?: string;
+  status: QueueTaskStatus;
+  is_running: boolean;
+  queue_position: number | null;
+  attempt?: number;
+  max_retries?: number;
+  last_error?: string;
 }
 
 export type SocketMessage = MonitorMessage | PongMessage | EventHistoryMessage;
